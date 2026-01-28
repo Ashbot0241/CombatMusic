@@ -6,7 +6,7 @@
 	File: init.lua
 	Purpose: Addon engine init
 
-	Version: @file-revision@
+	Version: 51bbae5d52db0febddc4b8dfa0aba9e082a295ed
 
 	This software is licenced under the MIT License.
 	Please see the LICENCE file for more details.
@@ -31,8 +31,8 @@ local date = date
 local AddOn = LibStub("AceAddon-3.0"):NewAddon(AddOnName, "AceEvent-3.0", "AceTimer-3.0", "LibVan32-2.0")
 --LibStub("LibVan32-1.0"):Embed(AddOn, canonicalTitle)
 
-AddOn._major = "@project-version@"
-AddOn._revision = "@project-abbreviated-hash@"
+AddOn._major = "v5.4.34"
+AddOn._revision = "91746d8"
 
 
 

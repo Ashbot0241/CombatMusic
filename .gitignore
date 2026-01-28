@@ -37,6 +37,10 @@ ehthumbs_vista.db
 # Folder config file
 [Dd]esktop.ini
 
+# Music Files
+*.mp3
+*.ogg
+
 # Recycle Bin used on file shares
 $RECYCLE.BIN/
 
@@ -49,19 +53,6 @@ $RECYCLE.BIN/
 
 # Windows shortcuts
 *.lnk
-
-### SublimeText ###
-# Cache files for Sublime Text
-*.tmlanguage.cache
-*.tmPreferences.cache
-*.stTheme.cache
-
-# Workspace files are user-specific
-*.sublime-workspace
-
-# Project files should be checked into the repository, unless a significant
-# proportion of contributors will probably not be using Sublime Text
-# *.sublime-project
 
 # SFTP configuration file
 sftp-config.json
@@ -78,8 +69,7 @@ Package Control.user-ca-bundle
 oscrypto-ca-bundle.crt
 bh_unicode_properties.cache
 
-# Sublime-github package stores a github token in this file
-# https://packagecontrol.io/packages/sublime-github
-GitHub.sublime-settings
+# VS Code files
+.vscode/
 
 # End of https://www.toptal.com/developers/gitignore/api/windows,lua,git

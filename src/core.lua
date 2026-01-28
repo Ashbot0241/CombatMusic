@@ -6,7 +6,7 @@
 	File: core.lua
 	Purpose: Core functions to build on
 
-	Version: @file-revision@
+	Version: 51bbae5d52db0febddc4b8dfa0aba9e082a295ed
 
 	This software is licenced under the MIT License.
 	Please see the LICENCE file for more details.
@@ -243,21 +243,22 @@ end
 
 
 --- Plays a random music file from the folder 'songPath'
---@arg songPath The folder path rooted at "Interface\\Music" of the songs to pick from
+--@arg songPath The folder path rooted at "Interface\\Addons\\CombatMusic\\Music" of the songs to pick from
 --@return 1 if music played successfully, otherwise nil
 --@usage MyModule.Success = E:PlayMusicFile("songPath")
-function E:PlayMusicFile(songPath)
-	printFuncName("PlayMusicFile", songPath)
-	if not songPath then return end
+function E:PlayMusicFile(musicType)
+	printFuncName("PlayMusicFile", musicType)
+
+	if not musicType then return end
 	-- Quickly plot out the paths we use
-	local fullPath = "Interface\\Music\\" .. songPath
+	local fullPath = "Interface\\Addons\\CombatMusic\\Music\\" .. musicType
 
 	-- songPath needs to exist...
-	if not self:GetSetting("General","SongList", songPath) then return false end
+	if not self:GetSetting("General","SongList", musicType) then return false end
 	-- Are we using this song type?
-	if not self:GetSetting("General", "SongList", songPath, "Enabled") then return false end
+	if not self:GetSetting("General", "SongList", musicType, "Enabled") then return false end
 	-- How many songs are we using of this songType?
-	local max = self:GetSetting("General", "SongList", songPath, "Count")
+	local max = self:GetSetting("General", "SongList", musicType, "Count")
 
 	-- Some more sanity checking...!
 	if not max then return false end
@@ -285,18 +286,30 @@ end
 --- Check to see if 'unit''s name is on the custom song list
 --@arg unit the unit token to check
 --@return True if the unit is on the custom song list, otherwise false.
-function E:CheckBossList(unit)
-	printFuncName("CheckBossList", unit)
-	if not unit then return end
-	-- TODO: Fix the bosslist not counting as music bug!
-	local name = UnitName(unit)
-	if CombatMusicBossList[name] then
+function E:CheckBossList(encounterID, playerName)
+	printFuncName("CheckBossList", encounterID, playerName)
+	if not encounterID and playerName == "" then return false end
+
+    local songName = ""
+    if playerName and CombatMusicBossList["Players"][playerName] then
+        songName = CombatMusicBossList["Players"][playerName].songName
+    elseif encounterID and CombatMusicBossList[encounterID] then
+		songName = CombatMusicBossList[encounterID].songName
+    end
+
+    if songName ~= "" then
+		local fullPath = "Interface\\Addons\\CombatMusic\\Music\\Bosses\\" .. songName
+
 		-- The unit is on the bosslist, play that specific song.
-		PlayMusic(CombatMusicBossList[name])
-		return true
+		local willPlay = PlayMusic(fullPath)
+		-- local willPlay, soundHandle = PlaySoundFile(songPath, "Music")
+		self:PrintDebug("  ==§bSong: " .. fullPath)
+		self:PrintDebug("  ==§bwillPlay: " .. tostring(willPlay))
+		return willPlay
 	end
 	return false
 end
+
 
 local WARNING_SHOWN
 --- Sets or restores the volume levels provided in the settings

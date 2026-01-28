@@ -6,7 +6,7 @@
 	File: combatEngine.lua
 	Purpose: The Engine that makes the magic happen
 
-	Version: @file-revision@
+	Version: f47258e63967c37858aba8886be2e40aa301bd65
 
 	This software is licenced under the MIT License.
 	Please see the LICENCE file for more details.
@@ -40,6 +40,21 @@ local DIFFICULTY_NONE = 0
 local DIFFICULTY_NORMAL = 1
 local DIFFICULTY_BOSS = 2
 local DIFFICULTY_BOSSLIST = 10
+
+function CE:EncounterStarted(event, ...)
+	--- Grabs the active encounter ID
+	printFuncName("EncounterStarted", event, ...)
+	if not E:GetSetting("Enabled") then return end
+	self.encounterID = tostring(...)
+end
+
+function CE:EncounterEnded(event, ...)
+	--- Clears the encounter ID
+	printFuncName("EncounterEnded", event, ...)
+	if not E:GetSetting("Enabled") then return end
+	self.encounterID = nil
+	self.EncounterLevel = DIFFICULTY_NONE
+end
 
 --- Handles the events for entering combat
 function CE:EnterCombat(event, ...)
@@ -78,6 +93,20 @@ function CE:EnterCombat(event, ...)
 	E:SendMessage("COMBATMUSIC_ENTER_COMBAT")
 end
 
+function CE:CheckPlayerTargets(playerID, unitName)
+    -- Check the boss list to see if any player names on it are targetable
+    for k, v in pairs(CombatMusicBossList["Players"]) do
+        print("99 - Check Targets: " .. k, v)
+        if v.playerGuid == playerID then
+            return v.playerName
+        elseif unitName and unitName == v.playerName then
+            v.playerGuid = playerID
+            return v.playerName
+        end
+    end
+
+    return ""
+end
 
 --- Update the TargetInfo table
 function CE:UpdateTargetInfoTable(unit)
@@ -91,8 +120,20 @@ function CE:UpdateTargetInfoTable(unit)
 	-- No checks if we're already using a song on the BossList
 	if self.EncounterLevel == DIFFICULTY_BOSSLIST then return true end
 
+	local playerName = ""
+    local playerGuid = UnitGUID(unit)
+    local unitName = ""
+    if not issecretvalue(UnitName(unit)) then
+        unitName = UnitName(unit) or nil
+    end
+
+	if playerGuid and UnitIsPlayer("target") then
+        local _, _, _, _, _, playerID = strsplit("-", playerGuid)
+	    playerName = self:CheckPlayerTargets(playerID, unitName)
+	end
+
 	-- Check the bosslist first.
-	if E:CheckBossList(unit) and self.EncounterLevel ~= DIFFICULTY_BOSSLIST then
+	if E:CheckBossList(self.encounterID, playerName) and self.EncounterLevel ~= DIFFICULTY_BOSSLIST then
 		self.EncounterLevel = DIFFICULTY_BOSSLIST
 		E:PrintDebug("  ==§cON BOSSLIST")
 		return true
@@ -348,45 +389,57 @@ function CE:ParseTargetInfo()
 	if self.EncounterLevel == DIFFICULTY_BOSSLIST then return true end
 
 	local musicType
-	for k, v in pairs(self.TargetInfo) do
-		-- The TargetInfo table is built {[1] = isBoss, [2] = InCombat}
-
-		-- What information were we given?
-		if v[1] and v[2] then
-			-- This is a boss, and we are in combat with it
-			-- Check to see if our encounter level is below what we're trying to play
-			if self.EncounterLevel < DIFFICULTY_BOSS then
-				musicType = "Bosses"
-				self.EncounterLevel = DIFFICULTY_BOSS
-				break -- this trumps all other stuff.
-			end
-		elseif v[1] and not v[2] then
-			-- This IS a boss, but not in combat.
-			if self.EncounterLevel < DIFFICULTY_NORMAL then
-				musicType = "Battles"
-				self.EncounterLevel = DIFFICULTY_NORMAL
-			end
-			if not self.RecheckTimer then self.RecheckTimer = {} end
-			-- Fix a serious bug that can lock up the gameclient by stacking timers endlessly.
-			if not self.RecheckTimer[k] then
-				self.RecheckTimer[k] = self:ScheduleRepeatingTimer("Recheck", 0.5, k)
-			end
-		else
-			if self.EncounterLevel < DIFFICULTY_NORMAL then
-				musicType = "Battles"
-				self.EncounterLevel = DIFFICULTY_NORMAL
-			end
+	if self.encounterID and PlayerIsInCombat() then
+		if self.EncounterLevel < DIFFICULTY_BOSS then
+		    musicType = "Bosses"
+		    self.EncounterLevel = DIFFICULTY_BOSS
+		end
+	elseif PlayerIsInCombat() then
+		if self.EncounterLevel < DIFFICULTY_NORMAL then
+		    musicType = "Battles"
+		    self.EncounterLevel = DIFFICULTY_NORMAL
 		end
 	end
 
-	-- Play the music
-	if musicType then
-		-- User might not want the song to change if music is already playing...
-		if E:GetSetting("General", "CombatEngine", "SkipSongChange") and self.isPlayingMusic then return true end
+	-- for k, v in pairs(self.TargetInfo) do
+	-- 	-- The TargetInfo table is built {[1] = isBoss, [2] = InCombat}
+	-- 	print(k, v)
 
-		return E:PlayMusicFile(musicType)
+	-- 	-- What information were we given?
+	-- 	if v[1] and v[2] then
+	-- 		-- This is a boss, and we are in combat with it
+	-- 		-- Check to see if our encounter level is below what we're trying to play
+	-- 		if self.EncounterLevel < DIFFICULTY_BOSS then
+	-- 			musicType = "Bosses"
+	-- 			self.EncounterLevel = DIFFICULTY_BOSS
+	-- 			break -- this trumps all other stuff.
+	-- 		end
+	-- 	elseif v[1] and not v[2] then
+	-- 		-- This IS a boss, but not in combat.
+	-- 		if self.EncounterLevel < DIFFICULTY_NORMAL then
+	-- 			musicType = "Battles"
+	-- 			self.EncounterLevel = DIFFICULTY_NORMAL
+	-- 		end
+	-- 		if not self.RecheckTimer then self.RecheckTimer = {} end
+	-- 		-- Fix a serious bug that can lock up the gameclient by stacking timers endlessly.
+	-- 		if not self.RecheckTimer[k] then
+	-- 			self.RecheckTimer[k] = self:ScheduleRepeatingTimer("Recheck", 0.5, k)
+	-- 		end
+	-- 	else
+	-- 		if self.EncounterLevel < DIFFICULTY_NORMAL then
+	-- 			musicType = "Battles"
+	-- 			self.EncounterLevel = DIFFICULTY_NORMAL
+	-- 		end
+	-- 	end
+	-- end
+
+     -- Play the music
+	if musicType then
+         -- User might not want the song to change if music is already playing...
+		if E:GetSetting("General", "CombatEngine", "SkipSongChange") and self.isPlayingMusic then return true end
+        return E:PlayMusicFile(musicType)
 	elseif not musicType and self.isPlayingMusic then
-		return true
+        return true
 	end
 end
 
@@ -607,7 +660,7 @@ function CE:PlayFanfare(fanfare)
 	end
 
 	-- Play our chosen fanfare
-	self.SoundId = select(2, E:PlaySoundFile("Interface\\Music\\" .. fanfare .. ".mp3"))
+	self.SoundId = select(2, E:PlaySoundFile("Interface\\Addons\\CombatMusic\\Music\\" .. fanfare .. ".mp3"))
 end
 
 
@@ -864,6 +917,8 @@ end
 
 function CE:OnEnable()
 	-- Enabling module, register events!
+	self:RegisterEvent("ENCOUNTER_START", "EncounterStarted")
+	self:RegisterEvent("ENCOUNTER_END", "EncounterEnded")
 	self:RegisterEvent("PLAYER_REGEN_DISABLED", "EnterCombat")
 	self:RegisterEvent("PLAYER_REGEN_ENABLED", "LeaveCombat")
 	self:RegisterEvent("PLAYER_LEVEL_UP", "LevelUp")
@@ -883,4 +938,3 @@ function CE:OnDisable()
 	self:UnregisterEvent("UNIT_TARGET")
 	self:UnregisterEvent("PLAYER_LEAVING_WORLD")
 end
-

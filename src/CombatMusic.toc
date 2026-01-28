@@ -1,8 +1,8 @@
-## Interface: 90005
-## Title: Van32's |cFFAF96FFCombatMusic|r
+## Interface: 120000
+## Title: Van32's |cFFAF96FFCombatMusic|r - Revived
 ## Notes: Plays custom music in combat.
-## Author: Vandesdelca32
-## Version: @project-version@
+## Author: Ashbot
+## Version: v6.0.00
 ## SavedVariables: CombatMusicDB, CombatMusicBossList
 
 embeds.xml

@@ -8,7 +8,7 @@
 @ECHO OFF
 
 ECHO This batch file will rename all of the songs you've placed inside of your
-ECHO Interface\Music directory to names that CombatMusic will recognize.
+ECHO 'Interface\Addons\CombatMusic' directory to names that CombatMusic will recognize.
 ECHO.
 ECHO WARNING: Running this batch file multiple times can mess up the names of
 ECHO all of the files. To fix this, just go into each of the folders, press
@@ -20,7 +20,7 @@ PAUSE
 
 :CHECKFOLDERS
 ECHO.
-IF ["%__CD__:~-16%"]==["Interface\Music\"] (
+IF ["%__CD__:~-18%"]==["CombatMusic\Music\"] (
 	IF NOT EXIST Battles\ (
 		MKDIR Battles
 		SET NODIR=1
@@ -31,7 +31,7 @@ IF ["%__CD__:~-16%"]==["Interface\Music\"] (
 	)
 	IF NOT DEFINED NODIR (GOTO LOOP) ELSE (GOTO END)
 ) ELSE (
-	IF ["%__CD__:~-10%"]==["Interface\"] (
+	IF ["%__CD__:~-12%"]==["CombatMusic\"] (
 		IF NOT EXIST Music\ (
 			ECHO Directories for CombatMusic are not initialized; creating them now...
 			MKDIR Music
@@ -42,7 +42,7 @@ IF ["%__CD__:~-16%"]==["Interface\Music\"] (
 		CD Music
 		GOTO CHECKFOLDERS
 	)
-	ECHO Could not locate "Interface" directory. Aborting!
+	ECHO Could not locate "CombatMusic" directory. Aborting!
 	GOTO END
 )
 

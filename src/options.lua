@@ -6,7 +6,7 @@
 	File: options.lua
 	Purpose: All of the options that come with the standard kit.
 
-	Version: @file-revision@
+	Version: 51bbae5d52db0febddc4b8dfa0aba9e082a295ed
 
 	This software is licenced under the MIT License.
 	Please see the LICENCE file for more details.
@@ -59,6 +59,72 @@ function E:ToggleOptions()
 	ACD:Open(AddOnName)
 end
 
+-- Function added by Ashbot, it works /shrug
+-- Needed another way to identify a boss in combat / instance
+-- Search for the boss name in the Encounter Journal and all encounters with that boss name
+-- to the boss list.
+-- Won't work for PvP targets so have to add that in.
+function E:AddBossName(bossName, songName, guid)
+    EJ_SetSearch(bossName)
+
+	-- Wait for the search to complete
+	C_Timer.NewTicker(0.1, function(self)
+		if EJ_IsSearchFinished() then
+			self:Cancel()
+
+			local numResults = EJ_GetNumSearchResults()
+			if not CombatMusicBossList["Players"] then
+                CombatMusicBossList["Players"] = {}
+            end
+
+            local newBoss = {}
+
+			-- Maybe a player? Store those differently
+			if numResults == 0 then
+				local player, realm = strsplit("-", bossName, 2)
+
+				if player then
+                    newBoss = {
+					    playerName = bossName or "",
+                        realmName = realm or "",
+                        playerGuid = guid or "",
+					    songName = songName or ""
+				    }
+				end
+
+				CombatMusicBossList["Players"][bossName] = newBoss
+			else
+
+			    -- Get the Encounter Info for the entered boss name
+			    for i = 1, EJ_GetNumSearchResults() do
+                    local id, stype, difficultyID, instanceID, encounterID, itemLink = EJ_GetSearchResult(i)
+
+                    if encounterID then
+                        local eName, _, eJournalEID, _, _, eJournalIID, eDungeonEID, eInstanceID = EJ_GetEncounterInfo(encounterID)
+                        local eID = tostring(eDungeonEID)
+
+                        if eJournalEID then
+                            newBoss = {
+                                bossName = bossName,
+                                encounterName = eName,
+                                journalEID = eJournalEID,
+                                journalIID = eJournalIID,
+                                dungeonEID = eDungeonEID,
+                                instanceID = eInstanceID,
+							    songName = songName
+                            }
+                            CombatMusicBossList[eID] = newBoss
+                        end
+                    end
+			    end
+			end
+
+            -- Rebuild the list of buttons! yay!
+	        E.Options.args.General.args.BossList.args.ListGroup.args = E:GetBosslistButtons()
+			ACR:NotifyChange(AddOnName)
+		end
+	end)
+end
 
 local blName = ""
 local blSong = ""
@@ -66,13 +132,12 @@ local blSong = ""
 function E:AddNewBossListEntry()
 	printFuncName("AddNewBossListEntry")
 
-	if not strfind(blSong, "\.mp3$") then
+    local guid = nil
 
-	end
-
-	-- Get the current target's name if they picked it.1
-	if blName == "%TARGET" then
+	-- Get the current target's name if they picked it.
+	if (blName == "%TARGET" or blName == "") and UnitExists("target") and not issecretvalue(UnitName("target")) then
 		blName = UnitName("target")
+        guid = UnitGUID("target")
 	end
 
 	-- Check to make sure there's a target and song
@@ -83,16 +148,15 @@ function E:AddNewBossListEntry()
 	if blSong == "" or blSong == nil then
 		self:PrintError(L["Err_NoBossListSong"])
 		return
-	elseif not strfind(blSong, "\.mp3$") then
+	elseif not strfind(blSong, "%.mp3$") then
 		self:PrintError(L["Err_NeedsToBeMP3"])
 		return
 	end
 
 	-- Add that song.
-	CombatMusicBossList[blName] = blSong
-	-- Rebuild the list of buttons! yay!
-	self.Options.args.General.args.BossList.args.ListGroup.args = self:GetBosslistButtons()
-	ACR:NotifyChange(AddOnName)
+	-- CombatMusicBossList[blName] = blSong
+	self:AddBossName(blName, blSong, guid)
+
 	blName = ""
 	blSong = ""
 end
@@ -101,21 +165,56 @@ end
 function E:GetBosslistButtons()
 	local t = {}
 	local count = 0
+
 	for k, v in pairs(CombatMusicBossList) do
-		count = count + 1
-		t["ListItem" .. count] = {
-			type = "execute",
-			name = k,
-			desc = v,
-			confirm = true,
-			confirmText = L["RemoveBossList"],
-			func = function()
-				CombatMusicBossList[k] = nil
-				-- redraw the list!
-				self.Options.args.General.args.BossList.args.ListGroup.args = self:GetBosslistButtons()
-				ACR:NotifyChange(AddOnName)
-			end,
-		}
+
+        if k == "Players" then
+            if type(v) == "table" then
+                for playerName, playerData in pairs(v) do
+                    count = count + 1
+
+                    local displayName = playerName
+                    if playerData.realmName and playerData.realmName ~= "" then
+                        displayName = displayName .. "-" .. playerData.realmName
+                    end
+
+                    t["ListItem" .. count] = {
+						type = "execute",
+						name = displayName,
+						desc = playerData.songName or "",
+						confirm = true,
+						confirmText = L["RemoveBossList"],
+						func = function()
+							CombatMusicBossList["Players"][playerName] = nil
+							self.Options.args.General.args.BossList.args.ListGroup.args = self:GetBosslistButtons()
+							ACR:NotifyChange(AddOnName)
+						end,
+                    }
+                end
+            end
+        else
+            local key = k
+            local displayName = k
+            local songName = ""
+
+            displayName = v.bossName or v.encounterName
+            songName = v.songName or ""
+
+            count = count + 1
+            t["ListItem" .. count] = {
+                type = "execute",
+                name = displayName,
+                desc = songName,
+                confirm = true,
+                confirmText = L["RemoveBossList"],
+                func = function()
+                    CombatMusicBossList[k] = nil
+                    -- redraw the list!
+                    self.Options.args.General.args.BossList.args.ListGroup.args = self:GetBosslistButtons()
+                    ACR:NotifyChange(AddOnName)
+                end,
+            }
+        end
 	end
 	return t
 end
@@ -191,7 +290,7 @@ E.Options.args = {
 				width = "full",
 				order = 604,
 				get = function(...)
-					return "https://wow.curseforge.com/projects/van32s-combatmusic"
+					return "https://wow.curseforge.com/projects/van32s-combatmusic-revived"
 				end
 			},
 			github = {
@@ -200,7 +299,7 @@ E.Options.args = {
 				width = "full",
 				order = 605,
 				get = function(...)
-					return "https://github.com/AndrielChaoti/CombatMusic"
+					return "https://github.com/Ashbot0241/CombatMusic"
 				end
 			},
 			VerStr = {
