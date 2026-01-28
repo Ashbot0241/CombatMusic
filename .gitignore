@@ -37,6 +37,9 @@ ehthumbs_vista.db
 # Folder config file
 [Dd]esktop.ini
 
+# Image Files
+*.png
+
 # Music Files
 *.mp3
 *.ogg
