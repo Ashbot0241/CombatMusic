@@ -31,7 +31,7 @@ local date = date
 local AddOn = LibStub("AceAddon-3.0"):NewAddon(AddOnName, "AceEvent-3.0", "AceTimer-3.0", "LibVan32-2.0")
 --LibStub("LibVan32-1.0"):Embed(AddOn, canonicalTitle)
 
-AddOn._major = "6.0.0"
+AddOn._major = "6.0.1"
 AddOn._revision = "91746d8"
 
 
@@ -113,6 +113,10 @@ function AddOn:OnInitialize()
 	if type(CombatMusicBossList) ~= "table" then
 		CombatMusicBossList = {}
 	end
+
+if type(CombatMusicBossList["Players"] ~= "table" then
+    (CombatMusicBossList["Players"] = {}
+ens
 
 	-- Build the bosslist buttons:
 	self.Options.args.General.args.BossList.args.ListGroup.args = self:GetBosslistButtons()
