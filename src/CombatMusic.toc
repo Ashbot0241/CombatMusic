@@ -1,4 +1,4 @@
-## Interface: 120000
+## Interface: 120001
 ## Title: Van32's |cFFAF96FFCombatMusic|r - Revived
 ## Notes: Plays custom music in combat.
 ## Author: Ashbot

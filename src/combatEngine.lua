@@ -408,38 +408,6 @@ function CE:ParseTargetInfo()
 		end
 	end
 
-	-- for k, v in pairs(self.TargetInfo) do
-	-- 	-- The TargetInfo table is built {[1] = isBoss, [2] = InCombat}
-	-- 	print(k, v)
-
-	-- 	-- What information were we given?
-	-- 	if v[1] and v[2] then
-	-- 		-- This is a boss, and we are in combat with it
-	-- 		-- Check to see if our encounter level is below what we're trying to play
-	-- 		if self.EncounterLevel < DIFFICULTY_BOSS then
-	-- 			musicType = "Bosses"
-	-- 			self.EncounterLevel = DIFFICULTY_BOSS
-	-- 			break -- this trumps all other stuff.
-	-- 		end
-	-- 	elseif v[1] and not v[2] then
-	-- 		-- This IS a boss, but not in combat.
-	-- 		if self.EncounterLevel < DIFFICULTY_NORMAL then
-	-- 			musicType = "Battles"
-	-- 			self.EncounterLevel = DIFFICULTY_NORMAL
-	-- 		end
-	-- 		if not self.RecheckTimer then self.RecheckTimer = {} end
-	-- 		-- Fix a serious bug that can lock up the gameclient by stacking timers endlessly.
-	-- 		if not self.RecheckTimer[k] then
-	-- 			self.RecheckTimer[k] = self:ScheduleRepeatingTimer("Recheck", 0.5, k)
-	-- 		end
-	-- 	else
-	-- 		if self.EncounterLevel < DIFFICULTY_NORMAL then
-	-- 			musicType = "Battles"
-	-- 			self.EncounterLevel = DIFFICULTY_NORMAL
-	-- 		end
-	-- 	end
-	-- end
-
      -- Play the music
 	if musicType then
          -- User might not want the song to change if music is already playing...
