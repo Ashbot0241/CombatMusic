@@ -114,9 +114,9 @@ function AddOn:OnInitialize()
 		CombatMusicBossList = {}
 	end
 
-if type(CombatMusicBossList["Players"] ~= "table" then
-    (CombatMusicBossList["Players"] = {}
-end
+    if type(CombatMusicBossList["Players"]) ~= "table" then
+        CombatMusicBossList["Players"] = {}
+    end
 
 	-- Build the bosslist buttons:
 	self.Options.args.General.args.BossList.args.ListGroup.args = self:GetBosslistButtons()
