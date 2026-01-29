@@ -2,7 +2,7 @@
 ## Title: Van32's |cFFAF96FFCombatMusic|r - Revived
 ## Notes: Plays custom music in combat.
 ## Author: Ashbot
-## Version: v6.0.1
+## Version: v6.0.2
 ## SavedVariables: CombatMusicDB, CombatMusicBossList
 
 embeds.xml
