@@ -13,3 +13,6 @@ If you have music already in the folders and it’s all set up, then run the bat
 
 ### Side Note
 You can only use .mp3 files for now, as WoW is a bit picky and wants the extension when I ask for the music files.
+
+### Side Side Note
+The batch file has some weird behaviour and doesn't seem to always rename songs properly. I'll need to delve into it and see if that can be resolved.

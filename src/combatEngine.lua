@@ -124,16 +124,19 @@ function CE:UpdateTargetInfoTable(unit)
 	-- No checks if we're already using a song on the BossList
 	if self.EncounterLevel == DIFFICULTY_BOSSLIST then return true end
 
-	local playerName = ""
-    local playerGuid = UnitGUID(unit)
-    local unitName = ""
+	local playerName = nil
+    local playerGuid = nil
+    local unitName = nil
     if not issecretvalue(UnitName(unit)) then
         unitName = UnitName(unit) or nil
     end
 
-	if playerGuid and UnitIsPlayer("target") then
-        local _, _, _, _, _, playerID = strsplit("-", playerGuid)
-	    playerName = self:CheckPlayerTargets(playerID, unitName)
+	if playerGuid and UnitIsPlayer(unit) then
+		if not issecretvalue(UnitGUID(unit)) then playerGuid = UnitGUID(unit) end
+		if playerGuid then
+            local _, _, _, _, _, playerID = strsplit("-", playerGuid)
+	        playerName = self:CheckPlayerTargets(playerID, unitName)
+		end
 	end
 
 	-- Check the bosslist first.
