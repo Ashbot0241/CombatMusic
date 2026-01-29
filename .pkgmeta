@@ -2,6 +2,7 @@
 
 ignore:
    - .libs
+   - Music
 
 move-folders:
    CombatMusic/src: CombatMusic
