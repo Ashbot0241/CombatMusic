@@ -95,6 +95,10 @@ end
 
 function CE:CheckPlayerTargets(playerID, unitName)
     -- Check the boss list to see if any player names on it are targetable
+
+	-- Check again that the table exists.
+	if not CombatMusicBossList["Players"] then CombatMusicBossList["Players"] = {} end
+
     for k, v in pairs(CombatMusicBossList["Players"]) do
         print("99 - Check Targets: " .. k, v)
         if v.playerGuid == playerID then

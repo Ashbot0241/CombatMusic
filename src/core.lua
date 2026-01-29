@@ -291,6 +291,8 @@ function E:CheckBossList(encounterID, playerName)
 	if not encounterID and playerName == "" then return false end
 
     local songName = ""
+	-- Checking that the table exists.
+	if not CombatMusicBossList["Players"] then CombatMusicBossList["Players"] = {} end
     if playerName and CombatMusicBossList["Players"][playerName] then
         songName = CombatMusicBossList["Players"][playerName].songName
     elseif encounterID and CombatMusicBossList[encounterID] then
