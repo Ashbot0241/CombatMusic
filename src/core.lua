@@ -243,7 +243,7 @@ end
 
 
 --- Plays a random music file from the folder 'songPath'
---@arg songPath The folder path rooted at "Interface\\Addons\\CombatMusic\\Music" of the songs to pick from
+--@arg songPath The folder path rooted at "Interface\\Music\\" of the songs to pick from
 --@return 1 if music played successfully, otherwise nil
 --@usage MyModule.Success = E:PlayMusicFile("songPath")
 function E:PlayMusicFile(musicType)
@@ -251,7 +251,7 @@ function E:PlayMusicFile(musicType)
 
 	if not musicType then return end
 	-- Quickly plot out the paths we use
-	local fullPath = "Interface\\Addons\\CombatMusic\\Music\\" .. musicType
+	local fullPath = "Interface\\Music\\" .. musicType
 
 	-- songPath needs to exist...
 	if not self:GetSetting("General","SongList", musicType) then return false end
@@ -293,6 +293,7 @@ function E:CheckBossList(encounterID, playerName)
     local songName = ""
 	-- Checking that the table exists.
 	if not CombatMusicBossList["Players"] then CombatMusicBossList["Players"] = {} end
+
     if playerName and CombatMusicBossList["Players"][playerName] then
         songName = CombatMusicBossList["Players"][playerName].songName
     elseif encounterID and CombatMusicBossList[encounterID] then
@@ -300,7 +301,7 @@ function E:CheckBossList(encounterID, playerName)
     end
 
     if songName ~= "" then
-		local fullPath = "Interface\\Addons\\CombatMusic\\Music\\Bosses\\" .. songName
+		local fullPath = "Interface\\Music\\Bosses\\" .. songName
 
 		-- The unit is on the bosslist, play that specific song.
 		local willPlay = PlayMusic(fullPath)
