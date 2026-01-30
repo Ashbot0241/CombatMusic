@@ -49,7 +49,7 @@ function CE:EncounterStarted(event, ...)
 end
 
 function CE:EncounterEnded(event, ...)
-	--- Clears the encounter ID
+	--- Clears the encounter ID when the encounter ends
 	printFuncName("EncounterEnded", event, ...)
 	if not E:GetSetting("Enabled") then return end
 	self.encounterID = nil

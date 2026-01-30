@@ -30,10 +30,10 @@ if L then
     L["Count"] = true
     L["DebugModeDisabled"] = "§7Debug Mode§r has been turned §7off§r."
     L["DebugModeWarning"] = "§7Debug Mode§r has been enabled. Please keep in mind that this is for testing purposes only. The addon will be print a LOT of messages to chat, spamming out most of anything else. To turn it back off, just run §6/cm debug§r again."
-    L["Desc_About"] = "Van32's CombatMusic, or just CombatMusic is an addon that you can use to bring that RPG feel back to your World of Warcraft experience! It helps you by automatically playing music you choose when you get into fights ingame!"
+    L["Desc_About"] = "G's CombatMusic, or just CombatMusic is an addon that you can use to bring that RPG feel back to your World of Warcraft experience! It helps you by automatically playing music you choose when you get into fights ingame!"
     L["Desc_AddBossList"] = "Add this to the boss list."
     L["Desc_BossListName"] = "The name of the NPC to add to the bosslist, Use \"%TARGET\" if you want to add your current target. Only works out of combat and not in an instance"
-    L["Desc_BossListSong"] = "The name of the song you want to play. A valid example might be song1.mp3 or ­DMF_L70ETC01.mp3. Default filepath Interface\\Addons\\CombatMusic\\Music"
+    L["Desc_BossListSong"] = "The name of the song you want to play. A valid example might be song1.mp3 or ­DMF_L70ETC01.mp3. Default filepath Interface\\Addons\\CombatMusic_Music"
     L["Desc_CheckBoss"] = "Check 'bossx' unitIDs, as well as target and focustarget."
     L["Desc_Count"] = [=[Number of songs.
     More than 100 can be added by entering the value in the text box.]=]
