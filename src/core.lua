@@ -27,8 +27,6 @@ local GetMaxPlayerLevel = GetMaxPlayerLevel
 
 local printFuncName = E.printFuncName
 
-
-
 --------------
 --	Useful Code
 --------------

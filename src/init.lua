@@ -85,8 +85,6 @@ Engine[3] = AddOn.DF
 _G[AddOnName] = Engine
 
 
-
-
 --------------
 --	Debug stuff
 --------------
@@ -96,8 +94,6 @@ function AddOn.printFuncName(func, ...)
 	local argList = tconcat({tostringall(...)}, "§r,§6 ")
 	return AddOn:PrintDebug("§7" .. func .. "§f(§6" .. (argList or "") .. "§f)")
 end
-
-
 
 
 -----------------
