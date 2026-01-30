@@ -635,7 +635,7 @@ function CE:PlayFanfare(fanfare)
 	end
 
 	-- Play our chosen fanfare
-	self.SoundId = select(2, E:PlaySoundFile("Interface\\Addons\\CombatMusic\\Music\\" .. fanfare .. ".mp3"))
+	self.SoundId = select(2, E:PlaySoundFile("Interface\\Addons\\CombatMusic_Music\\" .. fanfare .. ".mp3"))
 end
 
 
