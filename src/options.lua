@@ -34,7 +34,8 @@ local strCredits=[[I want to give a special thank you to everyone who's helped o
 §TCombatMusic's§r Authors:
 ------------------
 
-    §TAndrielChaoti§r - Author / Project Manager
+    Ashbot / Greiz - Maintainer - Project Manager
+    §TAndrielChaoti§r - Original Author
     yuningning520 - zhCN translation
 
 §6Special Thanks:§r
@@ -64,8 +65,8 @@ end
 -- Search for the boss name in the Encounter Journal and all encounters with that boss name
 -- to the boss list.
 -- Won't work for PvP targets so have to add that in.
-function E:AddBossName(bossName, songName, guid)
-    EJ_SetSearch(bossName)
+function E:AddBossName(name, song, guid)
+    EJ_SetSearch(name)
 
 	-- Wait for the search to complete
 	C_Timer.NewTicker(0.1, function(self)
@@ -77,27 +78,28 @@ function E:AddBossName(bossName, songName, guid)
                 CombatMusicBossList["Players"] = {}
             end
 
-            local newBoss = {}
+            local newPlayer = {}
 
 			-- Maybe a player? Store those differently
 			if numResults == 0 then
-				local player, realm = strsplit("-", bossName, 2)
+				local player, realm = strsplit("-", name, 2)
 
 				if player then
-                    newBoss = {
-					    playerName = bossName or "",
+                    newPlayer = {
+					    playerName = name or "",
                         realmName = realm or "",
                         playerGuid = guid or "",
-					    songName = songName or ""
+					    songName = song or ""
 				    }
 				end
 
-				CombatMusicBossList["Players"][bossName] = newBoss
+				CombatMusicBossList["Players"][name] = newPlayer
 			else
 
 			    -- Get the Encounter Info for the entered boss name
 			    for i = 1, EJ_GetNumSearchResults() do
                     local id, stype, difficultyID, instanceID, encounterID, itemLink = EJ_GetSearchResult(i)
+                    local newBoss
 
                     if encounterID then
                         local eName, _, eJournalEID, _, _, eJournalIID, eDungeonEID, eInstanceID = EJ_GetEncounterInfo(encounterID)
@@ -105,13 +107,13 @@ function E:AddBossName(bossName, songName, guid)
 
                         if eJournalEID then
                             newBoss = {
-                                bossName = bossName,
+                                bossName = name,
                                 encounterName = eName,
                                 journalEID = eJournalEID,
                                 journalIID = eJournalIID,
                                 dungeonEID = eDungeonEID,
                                 instanceID = eInstanceID,
-							    songName = songName
+							    songName = song
                             }
                             CombatMusicBossList[eID] = newBoss
                         end

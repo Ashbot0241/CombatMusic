@@ -93,58 +93,33 @@ function CE:EnterCombat(event, ...)
 	E:SendMessage("COMBATMUSIC_ENTER_COMBAT")
 end
 
-function CE:CheckPlayerTargets(playerID, unitName)
-    -- Check the boss list to see if any player names on it are targetable
-
-	-- Check again that the table exists.
-	if not CombatMusicBossList["Players"] then CombatMusicBossList["Players"] = {} end
-
-    for k, v in pairs(CombatMusicBossList["Players"]) do
-        print("99 - Check Targets: " .. k, v)
-        if v.playerGuid == playerID then
-            return v.playerName
-        elseif unitName and unitName == v.playerName then
-            v.playerGuid = playerID
-            return v.playerName
-        end
-    end
-
-    return ""
-end
-
 --- Update the TargetInfo table
 function CE:UpdateTargetInfoTable(unit)
 	printFuncName("UpdateTargetInfo", unit)
 	if not unit then return end
+
 	-- This check only applies if the player is in combat
 	-- or not fading out...
-	if not self.InCombat then return true end
-	if self.FadeTimer then return true end
+	if not self.InCombat and self.FadeTimer then return true end
+	-- if self.FadeTimer then return true end
 
 	-- No checks if we're already using a song on the BossList
 	if self.EncounterLevel == DIFFICULTY_BOSSLIST then return true end
 
-	local playerName = nil
-    local playerGuid = nil
-    local unitName = nil
-    if not issecretvalue(UnitName(unit)) then
-        unitName = UnitName(unit) or nil
+    local playerGuid
+
+    if UnitIsPlayer(unit) then
+        if not issecretvalue(UnitGUID(unit)) then
+            playerGuid =  UnitGUID(unit)
+        end
     end
 
-	if playerGuid and UnitIsPlayer(unit) then
-		if not issecretvalue(UnitGUID(unit)) then playerGuid = UnitGUID(unit) end
-		if playerGuid then
-            local _, _, _, _, _, playerID = strsplit("-", playerGuid)
-	        playerName = self:CheckPlayerTargets(playerID, unitName)
-		end
-	end
-
-	-- Check the bosslist first.
-	if E:CheckBossList(self.encounterID, playerName) and self.EncounterLevel ~= DIFFICULTY_BOSSLIST then
-		self.EncounterLevel = DIFFICULTY_BOSSLIST
+    -- Check the boss list
+    if E:CheckBossList(self.encounterID, playerGuid, unit) then
+        self.EncounterLevel = DIFFICULTY_BOSSLIST
 		E:PrintDebug("  ==§cON BOSSLIST")
 		return true
-	end
+    end
 
 	-- Get the target's information.
 	self.TargetInfo[unit] = {self:GetTargetInfo(unit)}
@@ -396,16 +371,17 @@ function CE:ParseTargetInfo()
 	if self.EncounterLevel == DIFFICULTY_BOSSLIST then return true end
 
 	local musicType
+
 	if self.encounterID and PlayerIsInCombat() then
 		if self.EncounterLevel < DIFFICULTY_BOSS then
 		    musicType = "Bosses"
 		    self.EncounterLevel = DIFFICULTY_BOSS
-		end
+        end
 	elseif PlayerIsInCombat() then
 		if self.EncounterLevel < DIFFICULTY_NORMAL then
 		    musicType = "Battles"
 		    self.EncounterLevel = DIFFICULTY_NORMAL
-		end
+        end
 	end
 
      -- Play the music

@@ -284,31 +284,49 @@ end
 --- Check to see if 'unit''s name is on the custom song list
 --@arg unit the unit token to check
 --@return True if the unit is on the custom song list, otherwise false.
-function E:CheckBossList(encounterID, playerName)
-	printFuncName("CheckBossList", encounterID, playerName)
-	if not encounterID and playerName == "" then return false end
+function E:CheckBossList(encounterID, playerGuid, unit)
+	printFuncName("CheckBossList", encounterID, playerGuid)
+	if not encounterID and not playerGuid then return false end
 
-    local songName = ""
-	-- Checking that the table exists.
+    local songName
+	-- Checking that the 'Players' sub-table exists.
 	if not CombatMusicBossList["Players"] then CombatMusicBossList["Players"] = {} end
 
-    if playerName and CombatMusicBossList["Players"][playerName] then
-        songName = CombatMusicBossList["Players"][playerName].songName
-    elseif encounterID and CombatMusicBossList[encounterID] then
+    -- If the unit is on the bosslist, play that specific song.
+    if encounterID and CombatMusicBossList[encounterID] then
 		songName = CombatMusicBossList[encounterID].songName
-    end
+    elseif playerGuid then
+        local playerName
+        if isnotsecretvalue(UnitName(unit)) then playerName = UnitName(unit) end
+        if playerName and CombatMusicBossList["Players"][playerName] then
+            -- Found the player, get their song
+            songName = CombatMusicBossList[playerName].songName
 
-    if songName ~= "" then
-		local fullPath = "Interface\\Addons\\CombatMusic_Music\\Bosses\\" .. songName
+            -- If we don't know their GUID, add it now.
+            if not CombatMusicBossList["Players"][playerName].playerGuid then
+                CombatMusicBossList["Players"][playerName].playerGuid = playerGuid
+            end
+        else
+            -- Otherwise, check to see whether we can match the player by their GUID
+            for name, info in pairs(CombatMusicBossList["Players"]) do
+                if info.playerGuid == playerGuid then
+                    songName = info.songName
+                    break
+                end
+            end
+        end
+    else return false end
 
-		-- The unit is on the bosslist, play that specific song.
-		local willPlay = PlayMusic(fullPath)
-		-- local willPlay, soundHandle = PlaySoundFile(songPath, "Music")
-		self:PrintDebug("  ==§bSong: " .. fullPath)
-		self:PrintDebug("  ==§bwillPlay: " .. tostring(willPlay))
-		return willPlay
-	end
-	return false
+    if not songName then return false end
+
+	local fullPath = "Interface\\Addons\\CombatMusic_Music\\Bosses\\" .. songName
+
+	-- If the song doesn't play, we may not be able to resolve the file path in 'fullPath'
+	if not fullPath then return false end
+
+    PlayMusic(fullPath)
+	self:PrintDebug("  ==§bSong: " .. fullPath)
+	return true
 end
 
 
