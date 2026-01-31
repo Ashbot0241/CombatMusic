@@ -297,7 +297,7 @@ function E:CheckBossList(encounterID, playerGuid, unit)
 		songName = CombatMusicBossList[encounterID].songName
     elseif playerGuid then
         local playerName
-        if isnotsecretvalue(UnitName(unit)) then playerName = UnitName(unit) end
+        if not issecretvalue(UnitName(unit)) then playerName = UnitName(unit) end
         if playerName and CombatMusicBossList["Players"][playerName] then
             -- Found the player, get their song
             songName = CombatMusicBossList[playerName].songName

@@ -23,6 +23,7 @@ local DEFAULT_HEIGHT = 500
 local AC = LibStub("AceConfig-3.0")
 local ACD = LibStub("AceConfigDialog-3.0")
 local ACR = LibStub("AceConfigRegistry-3.0")
+local GetAddOnMetadata = C_AddOns and C_AddOns.GetAddOnMetadata or GetAddOnMetadata
 AC:RegisterOptionsTable(AddOnName, E.Options)
 ACD:SetDefaultSize(AddOnName, DEFAULT_WIDTH, DEFAULT_HEIGHT)
 
@@ -86,10 +87,10 @@ function E:AddBossName(name, song, guid)
 
 				if player then
                     newPlayer = {
-					    playerName = name or "",
+					    playerName = name,
                         realmName = realm or "",
-                        playerGuid = guid or "",
-					    songName = song or ""
+                        playerGuid = guid or nil,
+					    songName = song
 				    }
 				end
 
@@ -292,7 +293,7 @@ E.Options.args = {
 				width = "full",
 				order = 604,
 				get = function(...)
-					return "https://wow.curseforge.com/projects/van32s-combatmusic-revived"
+					return "https://www.curseforge.com/wow/addons/gs-combat-music-revived"
 				end
 			},
 			github = {

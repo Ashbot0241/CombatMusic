@@ -108,7 +108,7 @@ function CE:UpdateTargetInfoTable(unit)
 
     local playerGuid
 
-    if UnitIsPlayer(unit) then
+    if unit and UnitIsPlayer(unit) then
         if not issecretvalue(UnitGUID(unit)) then
             playerGuid =  UnitGUID(unit)
         end
