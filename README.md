@@ -13,5 +13,7 @@ With that done, you’ll need songs for it to rename. If you don’t have any fo
 
 If you have music already in the folders and it’s all set up, then running the batch file will go through each of the subfolders, renaming the songs that you put in there to be recognized by CombatMusic’s random song picker (using the song#.mp3 naming convention). You can also leave song names as whatever you want for the boss list, but note that any songs not using the convention of 'song#.mp3' won't be a part of the random playlist.
 
+The addon will play random tracks from your 'Battles' folder when you enter combat. If entering combat against a 'Boss' creature it will instead play a random track from your 'Bosses' folder.
+
 ### Side Note
 You can only use .mp3 files for now, as WoW is a bit picky and wants the extension when I ask for the music files.

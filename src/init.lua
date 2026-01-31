@@ -31,7 +31,7 @@ local date = date
 local AddOn = LibStub("AceAddon-3.0"):NewAddon(AddOnName, "AceEvent-3.0", "AceTimer-3.0", "LibVan32-2.0")
 --LibStub("LibVan32-1.0"):Embed(AddOn, canonicalTitle)
 
-AddOn._major = "6.0.3"
+AddOn._major = "6.0.4"
 AddOn._revision = "91746d8"
 
 
