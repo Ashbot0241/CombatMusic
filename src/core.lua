@@ -263,6 +263,7 @@ function E:PlayMusicFile(musicType)
 	if max > 0 then
 		local rand = random(1, max)
 		self:PrintDebug("  ==§bSong: " .. fullPath .. "\\song" .. rand .. ".mp3")
+        print("266: E:PlayMusicFile - " .. fullPath)
 		return PlayMusic(fullPath .. "\\song" .. rand .. ".mp3")
 	end
 end

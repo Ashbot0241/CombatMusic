@@ -53,7 +53,6 @@ function CE:EncounterEnded(event, ...)
 	printFuncName("EncounterEnded", event, ...)
 	if not E:GetSetting("Enabled") then return end
 	self.encounterID = nil
-	self.EncounterLevel = DIFFICULTY_NONE
 end
 
 --- Handles the events for entering combat
@@ -74,10 +73,14 @@ function CE:EnterCombat(event, ...)
 	if self.InCombat then E:SetVolumeLevel(true) end
 	if UnitIsDeadOrGhost('player') then return end -- Don't play music if we're dead...
 
-
-	-- Begin target checking
 	self.InCombat = true
-	self.isPlayingMusic = self:BuildTargetInfo()
+    if not self.isPLayingMusic then
+        self.isPlayingMusic = self:ParseTargetInfo()
+
+    -- User might not want the song to change if music is already playing...
+    elseif E:GetSetting("General", "CombatEngine", "SkipSongChange") and self.isPlayingMusic then
+        return
+    end
 
 	-- Save the last volume state...
 	E:SaveLastVolumeState()
@@ -94,96 +97,112 @@ function CE:EnterCombat(event, ...)
 end
 
 --- Update the TargetInfo table
-function CE:UpdateTargetInfoTable(unit)
-	printFuncName("UpdateTargetInfo", unit)
-	if not unit then return end
+-- function CE:UpdateTargetInfoTable(unit)
+-- 	printFuncName("UpdateTargetInfo", unit)
+-- 	if not unit then return end
 
-	-- This check only applies if the player is in combat
-	-- or not fading out...
-	if not self.InCombat and self.FadeTimer then return true end
-	-- if self.FadeTimer then return true end
+-- 	-- This check only applies if the player is in combat
+-- 	-- or not fading out...
+-- 	if not self.InCombat and self.FadeTimer then return true end
+-- 	-- if self.FadeTimer then return true end
 
-	-- No checks if we're already using a song on the BossList
-	if self.EncounterLevel == DIFFICULTY_BOSSLIST then return true end
+-- 	-- No checks if we're already using a song on the BossList
+-- 	if self.EncounterLevel == DIFFICULTY_BOSSLIST then return true end
 
-    local playerGuid
+--     local playerGuid
 
-    if unit and UnitIsPlayer(unit) then
-        if not issecretvalue(UnitGUID(unit)) then
-            playerGuid =  UnitGUID(unit)
-        end
-    end
+--     if unit and UnitIsPlayer(unit) then
+--         if not issecretvalue(UnitGUID(unit)) then
+--             playerGuid =  UnitGUID(unit)
+--         end
+--     end
 
-    -- Check the boss list
-    if E:CheckBossList(self.encounterID, playerGuid, unit) then
-        self.EncounterLevel = DIFFICULTY_BOSSLIST
-		E:PrintDebug("  ==§cON BOSSLIST")
-		return true
-    end
+--     -- Check the boss list
+--     if E:CheckBossList(self.encounterID, playerGuid, unit) then
+--         self.EncounterLevel = DIFFICULTY_BOSSLIST
+-- 		E:PrintDebug("  ==§cON BOSSLIST")
+-- 		return true
+--     end
 
-	-- Get the target's information.
-	self.TargetInfo[unit] = {self:GetTargetInfo(unit)}
-	E:PrintDebug(format("  ==§b%s, isBoss = %s, inCombat = %s", tostringall(unit, self.TargetInfo[unit][1], self.TargetInfo[unit][2])))
-end
+-- 	-- Get the target's information.
+-- 	self.TargetInfo[unit] = {self:GetTargetInfo(unit)}
+-- 	E:PrintDebug(format("  ==§b%s, isBoss = %s, inCombat = %s", tostringall(unit, self.TargetInfo[unit][1], self.TargetInfo[unit][2])))
+-- end
 
 
 --- Handles target changes
-function CE:UNIT_TARGET(event, ...)
-	printFuncName("UNIT_TARGET", ...)
-	local unit = ...
+-- function CE:UNIT_TARGET(event, ...)
+-- 	printFuncName("UNIT_TARGET", ...)
+-- 	local unit = ...
 
-	if not E:GetSetting("Enabled") then return end
-	if not self.InCombat then return end
+-- 	if not E:GetSetting("Enabled") then return end
+-- 	if not self.InCombat then return end
 
-	-- Reset our target check timer
-	self._TargetCheckTime = debugprofilestop()
+-- 	-- Reset our target check timer
+-- 	self._TargetCheckTime = debugprofilestop()
 
-	-- This is only to check player and focus target changes
-	-- other changes don't matter, so Get the new target info
-	if unit == "player" then
-		self:UpdateTargetInfoTable("target")
-	elseif unit == "focus" then
-		self:UpdateTargetInfoTable("focustarget")
-	else
-		return
-	end
+-- 	-- This is only to check player and focus target changes
+-- 	-- other changes don't matter, so Get the new target info
+-- 	if unit == "player" then
+-- 		self:UpdateTargetInfoTable("target")
+-- 	elseif unit == "focus" then
+-- 		self:UpdateTargetInfoTable("focustarget")
+-- 	else
+-- 		return
+-- 	end
 
-	-- and run a quick parse again
-	self:ParseTargetInfo()
-end
+-- 	-- and run a quick parse again
+-- 	self:ParseTargetInfo()
+-- end
 
 
 --- Builds target information necessary to choose a song, then attempts to
 -- parse that information
-function CE:BuildTargetInfo()
-	printFuncName("BuildTargetInfo")
-	local targetList = {}
-	self.TargetInfo = {}
+-- function CE:BuildTargetInfo()
+-- 	printFuncName("BuildTargetInfo")
+-- 	local targetList = {}
+-- 	self.TargetInfo = {}
 
-	-- Check to see if we should check the focustarget before the target
-	if E:GetSetting("General", "CombatEngine", "PreferFocus") then
-		targetList = {"focustarget", "target"}
-	else
-		targetList= {"target", "focustarget"}
-	end
+-- 	-- Check to see if we should check the focustarget before the target
+-- 	if E:GetSetting("General", "CombatEngine", "PreferFocus") then
+-- 		targetList = {"focustarget", "target"}
+-- 	else
+-- 		targetList= {"target", "focustarget"}
+-- 	end
 
-	-- Add the boss targets if enabled.
-	-- This can be a CPU hog, so some might wish to disable it.
-	if E:GetSetting("General","CombatEngine", "CheckBoss") then
-		for i = 1, 5 do
-			if UnitExists("boss"..i) then
-				targetList[i+2] = "boss" .. i
-			end
-		end
-	end
+	-- -- Add the boss targets if enabled.
+	-- -- This can be a CPU hog, so some might wish to disable it.
+	-- if E:GetSetting("General","CombatEngine", "CheckBoss") then
+	-- 	for i = 1, 5 do
+	-- 		if UnitExists("boss"..i) then
+	-- 			targetList[i+2] = "boss" .. i
+	-- 		end
+	-- 	end
+	-- end
 
 	-- Get the information required on each target and parse the returns:
-	for i = 1, #targetList do
-		if self:UpdateTargetInfoTable(targetList[i]) then break end
-	end
-	-- Parse the information we got
-	return self:ParseTargetInfo()
-end
+	-- for i = 1, #targetList do
+	-- 	if self:UpdateTargetInfoTable(targetList[i]) then break end
+	-- end
+
+--     local playerGuid
+
+--     if unit and UnitIsPlayer(unit) then
+--         if not issecretvalue(UnitGUID(unit)) then
+--             playerGuid =  UnitGUID(unit)
+--         end
+--     end
+
+--     -- Check the boss list
+--     if E:CheckBossList(self.encounterID, playerGuid, unit) then
+--         self.EncounterLevel = DIFFICULTY_BOSSLIST
+-- 		E:PrintDebug("  ==§cON BOSSLIST")
+-- 		return true
+--     end
+
+-- 	-- Parse the information we got
+-- 	return self:ParseTargetInfo()
+-- end
 
 -- Use these instance IDs to ignore the garrisons.
 local garrisonIDs = {
@@ -222,130 +241,130 @@ end
 --- Checks specific information about 'unit' to attempt to determine if it is a boss or not
 --@arg unit The unit token of the unit to check
 --@return isBoss, InCombat, whether or not the unit is a boss or we are in combat with it
-function CE:GetTargetInfo(unit)
-	printFuncName("GetTargetInfo", unit)
+-- function CE:GetTargetInfo(unit)
+-- 	printFuncName("GetTargetInfo", unit)
 
-	-- No target check if there's no unit to check.
-	if not unit then return end
-	if not UnitExists(unit) then
-		E:PrintDebug("  ==§c" .. unit .. " doesn't exist.")
-		return
-	end
+-- 	-- No target check if there's no unit to check.
+-- 	if not unit then return end
+-- 	if not UnitExists(unit) then
+-- 		E:PrintDebug("  ==§c" .. unit .. " doesn't exist.")
+-- 		return
+-- 	end
 
-	-- Initialize
-	local isBoss = false
-	local function InCombat()
-		if UnitAffectingCombat(unit) then
-			return true
-		elseif not UnitAffectingCombat(unit) and E._DebugMode then
-			return true
-		else
-			return false
-		end
-	end
+-- 	-- Initialize
+-- 	local isBoss = false
+-- 	local function InCombat()
+-- 		if UnitAffectingCombat(unit) then
+-- 			return true
+-- 		elseif not UnitAffectingCombat(unit) and E._DebugMode then
+-- 			return true
+-- 		else
+-- 			return false
+-- 		end
+-- 	end
 
-	--[[There is some pretty complicated, yet pretty simple logic behind
-	the way that this program checks a target for a boss, and I am going
-	to attempt to explain it sensibly here. The following critera must
-	be met for the target to be a boss:
-		1) It is of "elite", "rareelite", "rare", or "worldboss" type
-			- With the exception of party/raid instances, where "elite"
-				is excluded.
-		2) The target is NOT "trivial"
-			- if the unit is such, then the check is forced false,
-				regardless of anything else.
-		3) One of the following:
-			a) The target's level > 5 + The player's level.
-				- Except in Raid instances
-				- -1 counts as being infintely greater than the player's level,
-					so it counts here.
-				- "elite" and "rareelite" recieve a 3 level bonus against the player
-					thus requiring them to only be 2 levels higher to qualify.
-			-- OR --
-			b) The target is a PVP flagged player.
-				- Excepting players that are in the current party or raid.
-					If the unit is such a player, then the check is forced false
-					regardless of what may have been picked before.
-	]]
+-- 	--[[There is some pretty complicated, yet pretty simple logic behind
+-- 	the way that this program checks a target for a boss, and I am going
+-- 	to attempt to explain it sensibly here. The following critera must
+-- 	be met for the target to be a boss:
+-- 		1) It is of "elite", "rareelite", "rare", or "worldboss" type
+-- 			- With the exception of party/raid instances, where "elite"
+-- 				is excluded.
+-- 		2) The target is NOT "trivial"
+-- 			- if the unit is such, then the check is forced false,
+-- 				regardless of anything else.
+-- 		3) One of the following:
+-- 			a) The target's level > 5 + The player's level.
+-- 				- Except in Raid instances
+-- 				- -1 counts as being infintely greater than the player's level,
+-- 					so it counts here.
+-- 				- "elite" and "rareelite" recieve a 3 level bonus against the player
+-- 					thus requiring them to only be 2 levels higher to qualify.
+-- 			-- OR --
+-- 			b) The target is a PVP flagged player.
+-- 				- Excepting players that are in the current party or raid.
+-- 					If the unit is such a player, then the check is forced false
+-- 					regardless of what may have been picked before.
+-- 	]]
 
-	-- Cache a table of collected information to parse
-	local unitInfo = {
-		level = {
-			raw = UnitEffectiveLevel(unit),
-			adj = UnitEffectiveLevel(unit)
-		},
-		isPlayer = UnitIsPlayer(unit),
-		isPvP = UnitIsPVP(unit) or UnitIsPVPFreeForAll(unit),
-		mobType = function()
-			local enumC = {trivial = -1, minus = 0, normal = 1, rare = 2, elite = 3, rareelite = 4, worldboss = 5}
-			local C = UnitClassification(unit)
-			return enumC[C]
-		end,
-		inGroup = (UnitInParty(unit) or UnitInRaid(unit)),
-	}
+-- 	-- Cache a table of collected information to parse
+-- 	local unitInfo = {
+-- 		level = {
+-- 			raw = UnitEffectiveLevel(unit),
+-- 			adj = UnitEffectiveLevel(unit)
+-- 		},
+-- 		isPlayer = UnitIsPlayer(unit),
+-- 		isPvP = UnitIsPVP(unit) or UnitIsPVPFreeForAll(unit),
+-- 		mobType = function()
+-- 			local enumC = {trivial = -1, minus = 0, normal = 1, rare = 2, elite = 3, rareelite = 4, worldboss = 5}
+-- 			local C = UnitClassification(unit)
+-- 			return enumC[C]
+-- 		end,
+-- 		inGroup = (UnitInParty(unit) or UnitInRaid(unit)),
+-- 	}
 
-	local playerInfo = {
-		level = E.dungeonLevel or UnitEffectiveLevel('player'),
-		instance = self:GetInstanceInfo()
-	}
+-- 	local playerInfo = {
+-- 		level = E.dungeonLevel or UnitEffectiveLevel('player'),
+-- 		instance = self:GetInstanceInfo()
+-- 	}
 
-	-- 1)
-	if unitInfo.mobType() > 1 then
-		-- Do the level adjustment here, while we're checking
-		-- unit type.
-		if unitInfo.mobType() == 3 or unitInfo.mobType() == 4 then
-			unitInfo.level.adj = unitInfo.level.raw + 3
-		end
+-- 	-- 1)
+-- 	if unitInfo.mobType() > 1 then
+-- 		-- Do the level adjustment here, while we're checking
+-- 		-- unit type.
+-- 		if unitInfo.mobType() == 3 or unitInfo.mobType() == 4 then
+-- 			unitInfo.level.adj = unitInfo.level.raw + 3
+-- 		end
 
-		-- Instance check:
-		if playerInfo.instance ~= INSTANCE_OUTDOORS then
-			-- Quick check to negate elites
-			if unitInfo.mobType() == 3 then
-				isBoss = false
-			else
-				isBoss = true
-			end
-		else
-			-- Outside instances
-			isBoss = true
-		end
-	end
+-- 		-- Instance check:
+-- 		if playerInfo.instance ~= INSTANCE_OUTDOORS then
+-- 			-- Quick check to negate elites
+-- 			if unitInfo.mobType() == 3 then
+-- 				isBoss = false
+-- 			else
+-- 				isBoss = true
+-- 			end
+-- 		else
+-- 			-- Outside instances
+-- 			isBoss = true
+-- 		end
+-- 	end
 
-	-- 2)
-	if (not E.dungeonLevel) and UnitIsTrivial(unit) then
-		return false, InCombat()
-	end
+-- 	-- 2)
+-- 	if (not E.dungeonLevel) and UnitIsTrivial(unit) then
+-- 		return false, InCombat()
+-- 	end
 
-	-- 3.a)
-	if playerInfo.instance ~= INSTANCE_RAID then
-		if unitInfo.level.adj >= 5 + playerInfo.level then
-			isBoss = true
-		end
-	else
-		isBoss = false
-	end
+-- 	-- 3.a)
+-- 	if playerInfo.instance ~= INSTANCE_RAID then
+-- 		if unitInfo.level.adj >= 5 + playerInfo.level then
+-- 			isBoss = true
+-- 		end
+-- 	else
+-- 		isBoss = false
+-- 	end
 
-	-- Level -1 check
-	if unitInfo.level.raw == -1 then
-		isBoss = true
-	end
+-- 	-- Level -1 check
+-- 	if unitInfo.level.raw == -1 then
+-- 		isBoss = true
+-- 	end
 
-	-- 3.b)
-	if unitInfo.isPlayer then
-		-- is the player flagged?
-		if unitInfo.isPvP then
-			isBoss = true
-		end
+-- 	-- 3.b)
+-- 	if unitInfo.isPlayer then
+-- 		-- is the player flagged?
+-- 		if unitInfo.isPvP then
+-- 			isBoss = true
+-- 		end
 
-		-- The clincher of 3.b)
-		if unitInfo.inGroup then
-			return false, InCombat()
-		end
-	end
+-- 		-- The clincher of 3.b)
+-- 		if unitInfo.inGroup then
+-- 			return false, InCombat()
+-- 		end
+-- 	end
 
-	-- Return what we figured out
-	return (isBoss or false), InCombat()
-end
+-- 	-- Return what we figured out
+-- 	return (isBoss or false), InCombat()
+-- end
 
 -- Schedule a recheck
 function CE:Recheck(k)
@@ -355,49 +374,82 @@ function CE:Recheck(k)
 		self:CancelTimer(self.RecheckTimer[k])
 		self.RecheckTimer[k] = nil
 	end
-	self:UpdateTargetInfoTable(k)
+	-- self:UpdateTargetInfoTable(k)
 	self:ParseTargetInfo()
 end
 
 
 --- Iterates through the module's target information table and plays music appropriately
 function CE:ParseTargetInfo()
-	printFuncName("ParseTargetInfo")
-	if not self.TargetInfo then return end
-	if not self.EncounterLevel then self.EncounterLevel = DIFFICULTY_NONE end
-	if self.FadeTimer then return end -- Don't change music if we're fading out...
+    printFuncName("ParseTargetInfo")
+    -- if not self.TargetInfo then return end
+    if not self.EncounterLevel then self.EncounterLevel = DIFFICULTY_NONE end
+    if self.FadeTimer then return end -- Don't change music if we're fading out...
 
-	-- We need to let it know to change the volume
-	if self.EncounterLevel == DIFFICULTY_BOSSLIST then return true end
+    -- User might not want the song to change if music is already playing...
+    -- if E:GetSetting("General", "CombatEngine", "SkipSongChange") and self.isPlayingMusic then return true end
 
-	local musicType
+    -- We need to let it know to change the volume
+    if self.EncounterLevel == DIFFICULTY_BOSSLIST then return true end
 
-	if self.encounterID and PlayerIsInCombat() then
-		if self.EncounterLevel < DIFFICULTY_BOSS then
-		    musicType = "Bosses"
-		    self.EncounterLevel = DIFFICULTY_BOSS
+    if E:GetSetting("General","CombatEngine", "CheckBoss") then
+        local targetList = {"target", "focustarget"}
+
+        -- Check to see if we should check the focustarget before the target
+        if E:GetSetting("General", "CombatEngine", "PreferFocus") then
+            targetList = {"focustarget", "target"}
         end
-	elseif PlayerIsInCombat() then
-		if self.EncounterLevel < DIFFICULTY_NORMAL then
-		    musicType = "Battles"
-		    self.EncounterLevel = DIFFICULTY_NORMAL
+
+        for i = 1, #targetList do
+            local unit = targetList[i]
+            local playerGuid
+
+            if unit and UnitIsPlayer(unit) then
+                if not issecretvalue(UnitGUID(unit)) then
+                    playerGuid =  UnitGUID(unit)
+                end
+            end
+
+            -- Check the boss list
+            if E:CheckBossList(self.encounterID, playerGuid, unit) then
+                -- Playing bosslist song
+                self.EncounterLevel = DIFFICULTY_BOSSLIST
+                E:PrintDebug("  ==§cON BOSSLIST")
+                return true
+            end
         end
-	end
+    end
+
+    -- if it's not on the boss list
+    local musicType
+
+    if self.encounterID and PlayerIsInCombat() then
+        if self.EncounterLevel < DIFFICULTY_BOSS then
+            musicType = "Bosses"
+            self.EncounterLevel = DIFFICULTY_BOSS
+        end
+    elseif PlayerIsInCombat() then
+        if self.EncounterLevel < DIFFICULTY_NORMAL then
+            musicType = "Battles"
+            self.EncounterLevel = DIFFICULTY_NORMAL
+        end
+    end
 
      -- Play the music
-	if musicType then
-         -- User might not want the song to change if music is already playing...
-		if E:GetSetting("General", "CombatEngine", "SkipSongChange") and self.isPlayingMusic then return true end
-        return E:PlayMusicFile(musicType)
-	elseif not musicType and self.isPlayingMusic then
+    if musicType then
+        E:PlayMusicFile(musicType)
+    -- elseif not musicType and self.isPlayingMusic then
         return true
-	end
+    end
+
+    return false
 end
 
 local function ResetCombatState()
 	if not CE.InCombat then return end
 	printFuncName("ResetCombatState")
 	-- Clear variables:
+    CE.encounterID = nil
 	CE.InCombat = nil
 	CE.EncounterLevel = nil
 	CE.FadeTimer = nil
@@ -405,9 +457,9 @@ local function ResetCombatState()
 	CE:CancelAllTimers()
 
 	-- Wipe tables
-	if CE.TargetInfo then
-		wipe(CE.TargetInfo)
-	end
+	-- if CE.TargetInfo then
+	-- 	wipe(CE.TargetInfo)
+	-- end
 
 	if CE.FadeVars then
 		wipe(CE.FadeVars)
@@ -431,6 +483,10 @@ function CE:LeaveCombat(event, forceStop)
 	-- Need to be in combat to leave it!
 	if not self.InCombat then return end
 	if not E:GetSetting("Enabled") then return end
+
+    -- This check only applies if the player is in combat
+    -- or not fading out...
+    if not self.InCombat and self.FadeTimer then return true end
 
 	-- Check event:
 	if event == "PLAYER_LEAVING_WORLD" then forceStop = true end
@@ -581,8 +637,6 @@ function CE:COMBATMUSIC_FADE_COMPLETED()
 
 	-- Stop the music
 	StopMusic()
-	self.isPlayingMusic = nil
-	self.EncounterLevel = nil
 
 	-- Reset the combat state finally
 	self.FadeTimer = self:ScheduleTimer(ResetCombatState, 1)
@@ -611,6 +665,7 @@ function CE:PlayFanfare(fanfare)
 	end
 
 	-- Play our chosen fanfare
+    print("664: CE:PlayFanfare - " .. fanfare)
 	self.SoundId = select(2, E:PlaySoundFile("Interface\\Addons\\CombatMusic_Music\\" .. fanfare .. ".mp3"))
 end
 
@@ -839,7 +894,7 @@ local opt = {
 -------------------
 local function CheckForCombat(self, elapsed)
 	if CE.isPlayingMusic then
-		CE:LeaveCombat(nil, 1)
+		CE:LeaveCombat(nil, false)
 		CE:ScheduleTimer("EnterCombat", 2)
 	end
 	self:Hide()
@@ -869,23 +924,25 @@ end
 function CE:OnEnable()
 	-- Enabling module, register events!
 	self:RegisterEvent("ENCOUNTER_START", "EncounterStarted")
-	self:RegisterEvent("ENCOUNTER_END", "EncounterEnded")
+    self:RegisterEvent("ENCOUNTER_END", "EncounterEnded")
 	self:RegisterEvent("PLAYER_REGEN_DISABLED", "EnterCombat")
 	self:RegisterEvent("PLAYER_REGEN_ENABLED", "LeaveCombat")
 	self:RegisterEvent("PLAYER_LEVEL_UP", "LevelUp")
 	self:RegisterEvent("PLAYER_DEAD", "GameOver")
-	self:RegisterEvent("INSTANCE_ENCOUNTER_ENGAGE_UNIT", "BuildTargetInfo")
-	self:RegisterEvent("UNIT_TARGET")
+	-- self:RegisterEvent("INSTANCE_ENCOUNTER_ENGAGE_UNIT", "BuildTargetInfo")
+	self:RegisterEvent("PLAYER_TARGET_CHANGED", "ParseTargetInfo")
 	self:RegisterEvent("PLAYER_LEAVING_WORLD", "LeaveCombat")
 end
 
 function CE:OnDisable()
 	-- Disabling module, unregister events!
 	self:LeaveCombat(nil, true)
+    self:UnregisterEvent("ENCOUNTER_START")
+    self:UnregisterEvent("ENCOUNTER_END")
 	self:UnregisterEvent("PLAYER_REGEN_DISABLED")
 	self:UnregisterEvent("PLAYER_REGEN_ENABLED")
 	self:UnregisterEvent("PLAYER_LEVEL_UP")
 	self:UnregisterEvent("PLAYER_DEAD")
-	self:UnregisterEvent("UNIT_TARGET")
+	self:UnregisterEvent("PLAYER_TARGET_CHANGED")
 	self:UnregisterEvent("PLAYER_LEAVING_WORLD")
 end
