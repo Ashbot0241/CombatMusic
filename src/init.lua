@@ -31,8 +31,8 @@ local date = date
 local AddOn = LibStub("AceAddon-3.0"):NewAddon(AddOnName, "AceEvent-3.0", "AceTimer-3.0", "LibVan32-2.0")
 --LibStub("LibVan32-1.0"):Embed(AddOn, canonicalTitle)
 
-AddOn._major = "6.0.6"
-AddOn._revision = "91746d8"
+AddOn._major = "@project-version@"
+AddOn._revision = "@project-hash@"
 
 
 -------------------
@@ -90,8 +90,20 @@ _G[AddOnName] = Engine
 -- Helps with printing function arguments and names in debug messages
 -- to make tracing code progress easier.
 function AddOn.printFuncName(func, ...)
-	local argList = tconcat({tostringall(...)}, "§r,§6 ")
-	return AddOn:PrintDebug("§7" .. func .. "§f(§6" .. (argList or "") .. "§f)")
+    AddOn._DebugMode = false
+    if not AddOn._DebugMode then return end
+	local argList = {}
+    for i = 1, select("#", ...) do
+        local v = select(i, ...)
+        if issecretvalue and issecretvalue(v) then
+            argList[i] = "<secrets>"
+        else
+            local ok, str = pcall(tostring, v)
+            argList[i] = ok and str or "<unknown>"
+        end
+    end
+    local debugList = table.concat(argList, "§r,§6 ")
+	return AddOn:PrintDebug("§7" .. func .. "§f(§6" .. debugList .. "§f)")
 end
 
 

@@ -1,7 +1,11 @@
 ﻿package-as: CombatMusic
 
+enable-nolib-creation: no
+
 ignore:
    - .libs
+     .git
+     .github
 
 move-folders:
    CombatMusic/src: CombatMusic
@@ -37,5 +41,3 @@ externals:
    libs/AceConfig-3.0:
       url: https://repos.wowace.com/wow/ace3/trunk/AceConfig-3.0
       tag: latest
-
-enable-nolib-creation: no

@@ -133,10 +133,10 @@ function E:HandleChatCommand(args)
 
 		-- Make sure challenge mode isn't running before changing states!
 		if isEnabled and not isRunning then
-			CombatMusicDB.General.InCombatChallenge = false
+			CombatMusicDB.General.inCombatChallenge = false
 			self:Print(L["Chat_ChallengeModeOff"])
 		elseif not isEnabled then
-			CombatMusicDB.General.InCombatChallenge = true
+			CombatMusicDB.General.inCombatChallenge = true
 			self:Print(L["Chat_ChallengeModeOn"])
 			self:GetModule("CombatEngine"):ResetCombatChallenge()
 			self:RegisterMessage("COMBATMUSIC_ENTER_COMBAT", function() return self:GetModule("CombatEngine"):StartCombatChallenge() end)
@@ -262,9 +262,10 @@ function E:PlayMusicFile(musicType)
 	if not max then return false end
 	if max > 0 then
 		local rand = random(1, max)
-		self:PrintDebug("  ==§bSong: " .. fullPath .. "\\song" .. rand .. ".mp3")
-        print("266: E:PlayMusicFile - " .. fullPath)
-		return PlayMusic(fullPath .. "\\song" .. rand .. ".mp3")
+		self:PrintDebug("  ==§bSong: " .. fullPath .. "\\song" .. rand .. ".ogg")
+
+        StopMusic()
+		return PlayMusic(fullPath .. "\\song" .. rand .. ".ogg")
 	end
 end
 
@@ -286,7 +287,7 @@ end
 --@arg unit the unit token to check
 --@return True if the unit is on the custom song list, otherwise false.
 function E:CheckBossList(encounterID, playerGuid, unit)
-	printFuncName("CheckBossList", encounterID, playerGuid)
+	printFuncName("CheckBossList", encounterID, playerGuid, unit)
 	if not encounterID and not playerGuid then return false end
 
     local songName
@@ -298,10 +299,16 @@ function E:CheckBossList(encounterID, playerGuid, unit)
 		songName = CombatMusicBossList[encounterID].songName
     elseif playerGuid then
         local playerName
-        if not issecretvalue(UnitName(unit)) then playerName = UnitName(unit) end
+        if unit and UnitIsPlayer(unit) then
+            local secretName = UnitName(unit)
+            if not issecretvalue or not issecretvalue(secretName) then
+                playerName = secretName
+            end
+        end
+
         if playerName and CombatMusicBossList["Players"][playerName] then
             -- Found the player, get their song
-            songName = CombatMusicBossList[playerName].songName
+            songName = CombatMusicBossList["Players"][playerName].songName
 
             -- If we don't know their GUID, add it now.
             if not CombatMusicBossList["Players"][playerName].playerGuid then
@@ -325,6 +332,7 @@ function E:CheckBossList(encounterID, playerGuid, unit)
 	-- If the song doesn't play, we may not be able to resolve the file path in 'fullPath'
 	if not fullPath then return false end
 
+    StopMusic()
     PlayMusic(fullPath)
 	self:PrintDebug("  ==§bSong: " .. fullPath)
 	return true

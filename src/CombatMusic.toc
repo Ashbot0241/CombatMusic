@@ -2,7 +2,7 @@
 ## Title: G's |cFFAF96FFCombatMusic|r - Revived
 ## Notes: Plays custom music in combat.
 ## Author: Ashbot
-## Version: v6.0.6
+## Version: v6.0.10
 ## SavedVariables: CombatMusicDB, CombatMusicBossList
 
 embeds.xml

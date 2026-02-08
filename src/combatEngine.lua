@@ -26,10 +26,8 @@ local exp, log = math.exp, math.log
 
 -- Locals for Target Info lookups:
 local debugprofilestop = debugprofilestop
-local UnitExists, UnitEffectiveLevel, UnitIsPlayer, UnitIsPVP, UnitClassification = UnitExists, UnitEffectiveLevel, UnitIsPlayer, UnitIsPVP, UnitClassification
-local UnitAffectingCombat, UnitIsTrivial, GetInstanceInfo, UnitInRaid = UnitAffectingCombat, UnitIsTrivial, GetInstanceInfo, UnitInRaid
-local UnitInParty, UnitIsPVPFreeForAll, UnitIsDeadOrGhost = UnitInParty, UnitIsPVPFreeForAll, UnitIsDeadOrGhost
-local StopMusic, PlaySoundFile, StopSound = StopMusic, PlaySoundFile, StopSound
+local GetInstanceInfo, UnitAffectingCombat, UnitIsDeadOrGhost, UnitIsPlayer = GetInstanceInfo, UnitAffectingCombat, UnitIsDeadOrGhost, UnitIsPlayer
+local StopMusic, StopSound = StopMusic, StopSound
 
 
 -- Debugging
@@ -41,12 +39,25 @@ local DIFFICULTY_NORMAL = 1
 local DIFFICULTY_BOSS = 2
 local DIFFICULTY_BOSSLIST = 10
 
+
 function CE:EncounterStarted(event, ...)
 	--- Grabs the active encounter ID
 	printFuncName("EncounterStarted", event, ...)
 	if not E:GetSetting("Enabled") then return end
-	self.encounterID = tostring(...)
+
+    local encounterID = ...
+    if not issecretvalue(encounterID) then
+	    self.encounterID = tostring(...)
+    else
+        self.encounterID = nil
+    end
+
+    if self:ParseTargetInfo() then
+        self.isPlayingMusic = true
+        self:CancelAllTimers()
+    end
 end
+
 
 function CE:EncounterEnded(event, ...)
 	--- Clears the encounter ID when the encounter ends
@@ -54,6 +65,7 @@ function CE:EncounterEnded(event, ...)
 	if not E:GetSetting("Enabled") then return end
 	self.encounterID = nil
 end
+
 
 --- Handles the events for entering combat
 function CE:EnterCombat(event, ...)
@@ -64,17 +76,17 @@ function CE:EnterCombat(event, ...)
 	self._TargetCheckTime = debugprofilestop()
 
 	-- Check Fading
-	if self.FadeTimer then
-		self.FadeTimer = nil
+	if self.fadeTimer then
+		self.fadeTimer = nil
 		self:CancelAllTimers()
 	end
 
 	-- Restore volume to defaults if we're already in combat
-	if self.InCombat then E:SetVolumeLevel(true) end
+	if self.inCombat then E:SetVolumeLevel(true) end
 	if UnitIsDeadOrGhost('player') then return end -- Don't play music if we're dead...
 
-	self.InCombat = true
-    if not self.isPLayingMusic then
+	self.inCombat = true
+    if not self.isPlayingMusic then
         self.isPlayingMusic = self:ParseTargetInfo()
 
     -- User might not want the song to change if music is already playing...
@@ -96,113 +108,6 @@ function CE:EnterCombat(event, ...)
 	E:SendMessage("COMBATMUSIC_ENTER_COMBAT")
 end
 
---- Update the TargetInfo table
--- function CE:UpdateTargetInfoTable(unit)
--- 	printFuncName("UpdateTargetInfo", unit)
--- 	if not unit then return end
-
--- 	-- This check only applies if the player is in combat
--- 	-- or not fading out...
--- 	if not self.InCombat and self.FadeTimer then return true end
--- 	-- if self.FadeTimer then return true end
-
--- 	-- No checks if we're already using a song on the BossList
--- 	if self.EncounterLevel == DIFFICULTY_BOSSLIST then return true end
-
---     local playerGuid
-
---     if unit and UnitIsPlayer(unit) then
---         if not issecretvalue(UnitGUID(unit)) then
---             playerGuid =  UnitGUID(unit)
---         end
---     end
-
---     -- Check the boss list
---     if E:CheckBossList(self.encounterID, playerGuid, unit) then
---         self.EncounterLevel = DIFFICULTY_BOSSLIST
--- 		E:PrintDebug("  ==§cON BOSSLIST")
--- 		return true
---     end
-
--- 	-- Get the target's information.
--- 	self.TargetInfo[unit] = {self:GetTargetInfo(unit)}
--- 	E:PrintDebug(format("  ==§b%s, isBoss = %s, inCombat = %s", tostringall(unit, self.TargetInfo[unit][1], self.TargetInfo[unit][2])))
--- end
-
-
---- Handles target changes
--- function CE:UNIT_TARGET(event, ...)
--- 	printFuncName("UNIT_TARGET", ...)
--- 	local unit = ...
-
--- 	if not E:GetSetting("Enabled") then return end
--- 	if not self.InCombat then return end
-
--- 	-- Reset our target check timer
--- 	self._TargetCheckTime = debugprofilestop()
-
--- 	-- This is only to check player and focus target changes
--- 	-- other changes don't matter, so Get the new target info
--- 	if unit == "player" then
--- 		self:UpdateTargetInfoTable("target")
--- 	elseif unit == "focus" then
--- 		self:UpdateTargetInfoTable("focustarget")
--- 	else
--- 		return
--- 	end
-
--- 	-- and run a quick parse again
--- 	self:ParseTargetInfo()
--- end
-
-
---- Builds target information necessary to choose a song, then attempts to
--- parse that information
--- function CE:BuildTargetInfo()
--- 	printFuncName("BuildTargetInfo")
--- 	local targetList = {}
--- 	self.TargetInfo = {}
-
--- 	-- Check to see if we should check the focustarget before the target
--- 	if E:GetSetting("General", "CombatEngine", "PreferFocus") then
--- 		targetList = {"focustarget", "target"}
--- 	else
--- 		targetList= {"target", "focustarget"}
--- 	end
-
-	-- -- Add the boss targets if enabled.
-	-- -- This can be a CPU hog, so some might wish to disable it.
-	-- if E:GetSetting("General","CombatEngine", "CheckBoss") then
-	-- 	for i = 1, 5 do
-	-- 		if UnitExists("boss"..i) then
-	-- 			targetList[i+2] = "boss" .. i
-	-- 		end
-	-- 	end
-	-- end
-
-	-- Get the information required on each target and parse the returns:
-	-- for i = 1, #targetList do
-	-- 	if self:UpdateTargetInfoTable(targetList[i]) then break end
-	-- end
-
---     local playerGuid
-
---     if unit and UnitIsPlayer(unit) then
---         if not issecretvalue(UnitGUID(unit)) then
---             playerGuid =  UnitGUID(unit)
---         end
---     end
-
---     -- Check the boss list
---     if E:CheckBossList(self.encounterID, playerGuid, unit) then
---         self.EncounterLevel = DIFFICULTY_BOSSLIST
--- 		E:PrintDebug("  ==§cON BOSSLIST")
--- 		return true
---     end
-
--- 	-- Parse the information we got
--- 	return self:ParseTargetInfo()
--- end
 
 -- Use these instance IDs to ignore the garrisons.
 local garrisonIDs = {
@@ -238,134 +143,6 @@ function CE:GetInstanceInfo()
 end
 
 
---- Checks specific information about 'unit' to attempt to determine if it is a boss or not
---@arg unit The unit token of the unit to check
---@return isBoss, InCombat, whether or not the unit is a boss or we are in combat with it
--- function CE:GetTargetInfo(unit)
--- 	printFuncName("GetTargetInfo", unit)
-
--- 	-- No target check if there's no unit to check.
--- 	if not unit then return end
--- 	if not UnitExists(unit) then
--- 		E:PrintDebug("  ==§c" .. unit .. " doesn't exist.")
--- 		return
--- 	end
-
--- 	-- Initialize
--- 	local isBoss = false
--- 	local function InCombat()
--- 		if UnitAffectingCombat(unit) then
--- 			return true
--- 		elseif not UnitAffectingCombat(unit) and E._DebugMode then
--- 			return true
--- 		else
--- 			return false
--- 		end
--- 	end
-
--- 	--[[There is some pretty complicated, yet pretty simple logic behind
--- 	the way that this program checks a target for a boss, and I am going
--- 	to attempt to explain it sensibly here. The following critera must
--- 	be met for the target to be a boss:
--- 		1) It is of "elite", "rareelite", "rare", or "worldboss" type
--- 			- With the exception of party/raid instances, where "elite"
--- 				is excluded.
--- 		2) The target is NOT "trivial"
--- 			- if the unit is such, then the check is forced false,
--- 				regardless of anything else.
--- 		3) One of the following:
--- 			a) The target's level > 5 + The player's level.
--- 				- Except in Raid instances
--- 				- -1 counts as being infintely greater than the player's level,
--- 					so it counts here.
--- 				- "elite" and "rareelite" recieve a 3 level bonus against the player
--- 					thus requiring them to only be 2 levels higher to qualify.
--- 			-- OR --
--- 			b) The target is a PVP flagged player.
--- 				- Excepting players that are in the current party or raid.
--- 					If the unit is such a player, then the check is forced false
--- 					regardless of what may have been picked before.
--- 	]]
-
--- 	-- Cache a table of collected information to parse
--- 	local unitInfo = {
--- 		level = {
--- 			raw = UnitEffectiveLevel(unit),
--- 			adj = UnitEffectiveLevel(unit)
--- 		},
--- 		isPlayer = UnitIsPlayer(unit),
--- 		isPvP = UnitIsPVP(unit) or UnitIsPVPFreeForAll(unit),
--- 		mobType = function()
--- 			local enumC = {trivial = -1, minus = 0, normal = 1, rare = 2, elite = 3, rareelite = 4, worldboss = 5}
--- 			local C = UnitClassification(unit)
--- 			return enumC[C]
--- 		end,
--- 		inGroup = (UnitInParty(unit) or UnitInRaid(unit)),
--- 	}
-
--- 	local playerInfo = {
--- 		level = E.dungeonLevel or UnitEffectiveLevel('player'),
--- 		instance = self:GetInstanceInfo()
--- 	}
-
--- 	-- 1)
--- 	if unitInfo.mobType() > 1 then
--- 		-- Do the level adjustment here, while we're checking
--- 		-- unit type.
--- 		if unitInfo.mobType() == 3 or unitInfo.mobType() == 4 then
--- 			unitInfo.level.adj = unitInfo.level.raw + 3
--- 		end
-
--- 		-- Instance check:
--- 		if playerInfo.instance ~= INSTANCE_OUTDOORS then
--- 			-- Quick check to negate elites
--- 			if unitInfo.mobType() == 3 then
--- 				isBoss = false
--- 			else
--- 				isBoss = true
--- 			end
--- 		else
--- 			-- Outside instances
--- 			isBoss = true
--- 		end
--- 	end
-
--- 	-- 2)
--- 	if (not E.dungeonLevel) and UnitIsTrivial(unit) then
--- 		return false, InCombat()
--- 	end
-
--- 	-- 3.a)
--- 	if playerInfo.instance ~= INSTANCE_RAID then
--- 		if unitInfo.level.adj >= 5 + playerInfo.level then
--- 			isBoss = true
--- 		end
--- 	else
--- 		isBoss = false
--- 	end
-
--- 	-- Level -1 check
--- 	if unitInfo.level.raw == -1 then
--- 		isBoss = true
--- 	end
-
--- 	-- 3.b)
--- 	if unitInfo.isPlayer then
--- 		-- is the player flagged?
--- 		if unitInfo.isPvP then
--- 			isBoss = true
--- 		end
-
--- 		-- The clincher of 3.b)
--- 		if unitInfo.inGroup then
--- 			return false, InCombat()
--- 		end
--- 	end
-
--- 	-- Return what we figured out
--- 	return (isBoss or false), InCombat()
--- end
-
 -- Schedule a recheck
 function CE:Recheck(k)
 	self._TargetCheckTime = debugprofilestop()
@@ -382,15 +159,15 @@ end
 --- Iterates through the module's target information table and plays music appropriately
 function CE:ParseTargetInfo()
     printFuncName("ParseTargetInfo")
-    -- if not self.TargetInfo then return end
-    if not self.EncounterLevel then self.EncounterLevel = DIFFICULTY_NONE end
-    if self.FadeTimer then return end -- Don't change music if we're fading out...
+    if self.encounterID then print("encounterID: " .. self.encounterID) end
+    if not self.inCombat then return false end
+    if not self.encounterLevel then self.encounterLevel = DIFFICULTY_NONE end
 
-    -- User might not want the song to change if music is already playing...
-    -- if E:GetSetting("General", "CombatEngine", "SkipSongChange") and self.isPlayingMusic then return true end
+    -- Don't change music if we're fading out...
+    if self.fadeTimer then return end
 
     -- We need to let it know to change the volume
-    if self.EncounterLevel == DIFFICULTY_BOSSLIST then return true end
+    if self.encounterLevel == DIFFICULTY_BOSSLIST then return true end
 
     if E:GetSetting("General","CombatEngine", "CheckBoss") then
         local targetList = {"target", "focustarget"}
@@ -404,16 +181,21 @@ function CE:ParseTargetInfo()
             local unit = targetList[i]
             local playerGuid
 
-            if unit and UnitIsPlayer(unit) then
-                if not issecretvalue(UnitGUID(unit)) then
-                    playerGuid =  UnitGUID(unit)
+            if issecretvalue(UnitName(unit)) or issecretvalue(UnitGUID(unit)) then
+                unit = ""
+                playerGuid = nil
+            elseif UnitExists(unit) and UnitIsPlayer(unit) then
+                local guid = UnitGUID(unit)
+                if guid then
+                    playerGuid =  guid
+                    unit = targetList[i]
                 end
             end
 
             -- Check the boss list
             if E:CheckBossList(self.encounterID, playerGuid, unit) then
                 -- Playing bosslist song
-                self.EncounterLevel = DIFFICULTY_BOSSLIST
+                self.encounterLevel = DIFFICULTY_BOSSLIST
                 E:PrintDebug("  ==§cON BOSSLIST")
                 return true
             end
@@ -423,37 +205,39 @@ function CE:ParseTargetInfo()
     -- if it's not on the boss list
     local musicType
 
-    if self.encounterID and PlayerIsInCombat() then
-        if self.EncounterLevel < DIFFICULTY_BOSS then
+    if self.encounterID and UnitAffectingCombat("player") then
+        if self.encounterLevel < DIFFICULTY_BOSS then
             musicType = "Bosses"
-            self.EncounterLevel = DIFFICULTY_BOSS
+            self.encounterLevel = DIFFICULTY_BOSS
         end
-    elseif PlayerIsInCombat() then
-        if self.EncounterLevel < DIFFICULTY_NORMAL then
+    elseif UnitAffectingCombat("player") then
+        if self.encounterLevel < DIFFICULTY_NORMAL then
             musicType = "Battles"
-            self.EncounterLevel = DIFFICULTY_NORMAL
+            self.encounterLevel = DIFFICULTY_NORMAL
         end
     end
 
      -- Play the music
-    if musicType then
+    if musicType and musicType ~= self.musicType then
+        self.musicType = musicType
         E:PlayMusicFile(musicType)
-    -- elseif not musicType and self.isPlayingMusic then
         return true
     end
 
     return false
 end
 
+
 local function ResetCombatState()
-	if not CE.InCombat then return end
+	if not CE.inCombat then return end
 	printFuncName("ResetCombatState")
 	-- Clear variables:
     CE.encounterID = nil
-	CE.InCombat = nil
-	CE.EncounterLevel = nil
-	CE.FadeTimer = nil
+	CE.inCombat = nil
+	CE.encounterLevel = nil
+	CE.fadeTimer = nil
 	CE.isPlayingMusic = nil
+    CE.musicType = nil
 	CE:CancelAllTimers()
 
 	-- Wipe tables
@@ -474,19 +258,18 @@ end
 
 
 local MAX_FADE_STEPS = 50
-
 --- Handles the leaving of combat
 --@arg forceStop Pass as true to force the music to stop instead of fade out.
 function CE:LeaveCombat(event, forceStop)
 	printFuncName("LeaveCombat", event, forceStop)
 
 	-- Need to be in combat to leave it!
-	if not self.InCombat then return end
+	if not self.inCombat then return end
 	if not E:GetSetting("Enabled") then return end
 
     -- This check only applies if the player is in combat
     -- or not fading out...
-    if not self.InCombat and self.FadeTimer then return true end
+    if not self.inCombat and self.fadeTimer then return true end
 
 	-- Check event:
 	if event == "PLAYER_LEAVING_WORLD" then forceStop = true end
@@ -502,7 +285,7 @@ function CE:LeaveCombat(event, forceStop)
 	-- Forcing the music stopped?
 	if forceStop then
 		-- Force it to not be a boss fight first, so we don't get a fanfare.
-		self.EncounterLevel = DIFFICULTY_NONE
+		self.encounterLevel = DIFFICULTY_NONE
 		self:SendMessage("COMBATMUSIC_FADE_COMPLETED")
 		return
 	else
@@ -510,8 +293,8 @@ function CE:LeaveCombat(event, forceStop)
 		-- so check that here.
 		local fadeMode = E:GetSetting("General", "CombatEngine", "FadeMode")
 		if (fadeMode == "ALL") or
-			 (fadeMode == "BOSSNEVER" and self.EncounterLevel == DIFFICULTY_NORMAL) or
-			 (fadeMode == "BOSSONLY" and self.EncounterLevel > DIFFICULTY_NORMAL) then
+			 (fadeMode == "BOSSNEVER" and self.encounterLevel == DIFFICULTY_NORMAL) or
+			 (fadeMode == "BOSSONLY" and self.encounterLevel > DIFFICULTY_NORMAL) then
 			-- They actually want music fading? Start it up!
 			self:BeginMusicFade()
 		else
@@ -535,7 +318,7 @@ function CE:GameOver()
 	-- play the fanfare :D
 	if GameOverWhen == "ALL" then
 		self:PlayFanfare("GameOver")
-	elseif GameOverWhen == "INCOMBAT" and self.InCombat then
+	elseif GameOverWhen == "INCOMBAT" and self.inCombat then
 		self:PlayFanfare("GameOver")
 	end
 end
@@ -544,8 +327,8 @@ end
 --- Fade Cycle timer callback
 -- @arg logMode set to true to switch to log mode
 local function FadeStepCallback(logMode)
-	printFuncName("FadeStep")
-	if not CE.FadeTimer then return end
+	-- printFuncName("FadeStep")
+	if not CE.fadeTimer then return end
 
 	if not CE.FadeVars.StepCount then
 
@@ -567,29 +350,29 @@ local function FadeStepCallback(logMode)
 	CE.FadeVars.StepCount = CE.FadeVars.StepCount + 1
 
 	-- Update the current volume
-	if logMode then
-		CE.FadeVars.CurrentVolume = log(CE.FadeVars.VolumeStep)
-  else
-		CE.FadeVars.CurrentVolume = CE.FadeVars.CurrentVolume - CE.FadeVars.VolumeStep
-  end
+    if logMode then
+        CE.FadeVars.CurrentVolume = log(CE.FadeVars.VolumeStep)
+    else
+        CE.FadeVars.CurrentVolume = CE.FadeVars.CurrentVolume - CE.FadeVars.VolumeStep
+    end
 
-	E:PrintDebug(format("  ==§bStepCount = %d, CurrentVolume = %f",  CE.FadeVars.StepCount, CE.FadeVars.CurrentVolume))
-	-- And change our VolumeStep
-	CE.FadeVars.VolumeStep = CE.FadeVars.VolumeStep - CE.FadeVars.VolumeStepDelta
+	-- E:PrintDebug(format("  ==§bStepCount = %d, CurrentVolume = %f",  CE.FadeVars.StepCount, CE.FadeVars.CurrentVolume))
+    -- And change our VolumeStep
+    CE.FadeVars.VolumeStep = CE.FadeVars.VolumeStep - CE.FadeVars.VolumeStepDelta
 
-	-- Volume can't fall below 0, and we don't want to go farther than MAX_FADE_STEPS
-	if CE.FadeVars.CurrentVolume <= 0 or CE.FadeVars.StepCount >= MAX_FADE_STEPS then
-		CE.FadeVars.CurrentVolume = 0
-		-- Set the volume, stop the music, and wait for it to finish fading off before sending the
-		-- fading complete message.
-		SetCVar("Sound_MusicVolume", CE.FadeVars.CurrentVolume)
-		CE:CancelTimer(CE.FadeTimer)
-		CE:SendMessage("COMBATMUSIC_FADE_COMPLETED")
-		return
-	end
+    -- Volume can't fall below 0, and we don't want to go farther than MAX_FADE_STEPS
+    if CE.FadeVars.CurrentVolume <= 0 or CE.FadeVars.StepCount >= MAX_FADE_STEPS then
+        CE.FadeVars.CurrentVolume = 0
+        -- Set the volume, stop the music, and wait for it to finish fading off before sending the
+        -- fading complete message.
+        SetCVar("Sound_MusicVolume", CE.FadeVars.CurrentVolume)
+        CE:CancelTimer(CE.fadeTimer)
+        CE:SendMessage("COMBATMUSIC_FADE_COMPLETED")
+        return
+    end
 
-	-- And set our volume
-	SetCVar("Sound_MusicVolume", CE.FadeVars.CurrentVolume)
+    -- And set our volume
+    SetCVar("Sound_MusicVolume", CE.FadeVars.CurrentVolume)
 end
 
 
@@ -598,7 +381,7 @@ function CE:BeginMusicFade()
 	printFuncName("BeginMusicFade")
 
 	-- Already fading?
-	if self.FadeTimer then return end
+	if self.fadeTimer then return end
 
 	-- Get our fade timeout.
 	self.fadeTime = E:GetSetting("General", "CombatEngine", "FadeTimer")
@@ -615,7 +398,7 @@ function CE:BeginMusicFade()
 	-- Get the interval
 	self.FadeVars.interval = self.fadeTime / MAX_FADE_STEPS
 	-- Schedule the timer
-	self.FadeTimer = self:ScheduleRepeatingTimer(FadeStepCallback, self.FadeVars.interval, E:GetSetting("General", "CombatEngine", "FadeLog"))
+	self.fadeTimer = self:ScheduleRepeatingTimer(FadeStepCallback, self.FadeVars.interval, E:GetSetting("General", "CombatEngine", "FadeLog"))
 end
 
 
@@ -628,7 +411,7 @@ function CE:COMBATMUSIC_FADE_COMPLETED()
 	-- If this was a boss fight:
 	local playWhen = E:GetSetting("General", "CombatEngine", "FanfareEnable")
 	if playWhen == "BOSSONLY" then
-		if self.EncounterLevel > 1 then
+		if self.encounterLevel > 1 then
 			self:PlayFanfare("Victory")
 		end
 	elseif playWhen == "ALL" then
@@ -639,7 +422,7 @@ function CE:COMBATMUSIC_FADE_COMPLETED()
 	StopMusic()
 
 	-- Reset the combat state finally
-	self.FadeTimer = self:ScheduleTimer(ResetCombatState, 1)
+	self.fadeTimer = self:ScheduleTimer(ResetCombatState, 1)
 end
 
 
@@ -665,7 +448,6 @@ function CE:PlayFanfare(fanfare)
 	end
 
 	-- Play our chosen fanfare
-    print("664: CE:PlayFanfare - " .. fanfare)
 	self.SoundId = select(2, E:PlaySoundFile("Interface\\Addons\\CombatMusic_Music\\" .. fanfare .. ".mp3"))
 end
 
@@ -730,6 +512,7 @@ function CE:EndCombatChallenge()
 	end
 end
 
+
 --- Resets the Challenge Mode
 function CE:ResetCombatChallenge()
 	printFuncName("ResetCombatChallenge")
@@ -741,6 +524,7 @@ function CE:ResetCombatChallenge()
 	-- Let the user know that the challenge is ready to start again.
 	E:Print(L["Chat_ChallengeModeReset"])
 end
+
 
 --- Gets current Challenge Mode state
 --@return several values that represent the current state.
@@ -758,17 +542,16 @@ end
 -----------------
 local defaults = {
 	FadeTimer = 10,
-	GameOverEnable = "ALL", -- Valid are "ALL", "BOSSONLY", "NONE"
-	FanfareEnable = "BOSSONLY", -- Valid are "ALL", "BOSSONLY", "NONE"
+	GameOverEnable = "ALL",         -- Valid are "ALL", "BOSSONLY", "NONE"
+	FanfareEnable = "BOSSONLY",     -- Valid are "ALL", "BOSSONLY", "NONE"
 	PreferFocus = false,
 	CheckBoss = true,
 	UseDing = true,
-	FadeMode = "ALL", -- Valid are "ALL", "BOSSONLY", "BOSSNEVER", "NONE"
+	FadeMode = "ALL",               -- Valid are "ALL", "BOSSONLY", "BOSSNEVER", "NONE"
 	FadeLog = true,
 	GarrisonsAreOutdoors = true,
 	SkipSongChange = false,
 }
-
 
 
 local opt = {
@@ -888,19 +671,9 @@ local opt = {
 }
 
 
-
 -------------------
 --	Module Functions
 -------------------
-local function CheckForCombat(self, elapsed)
-	if CE.isPlayingMusic then
-		CE:LeaveCombat(nil, false)
-		CE:ScheduleTimer("EnterCombat", 2)
-	end
-	self:Hide()
-end
-
-
 function CE:OnInitialize()
 	-- Include our default setttings
 	DF.General.CombatEngine = defaults
@@ -914,11 +687,6 @@ function CE:OnInitialize()
 	DF.Modules.CombatEngine = true
 	-- Last, but not least, add it's config to the options.
 	E.Options.args.General.args.CombatEngine = opt
-	local f = CreateFrame("Frame")
-	f:Hide()
-	f:RegisterEvent("PLAYER_ENTERING_WORLD")
-	f:SetScript("OnUpdate", CheckForCombat)
-	f:SetScript("OnEvent", function(self, event, ...) self:Show(); end)
 end
 
 function CE:OnEnable()
@@ -929,8 +697,7 @@ function CE:OnEnable()
 	self:RegisterEvent("PLAYER_REGEN_ENABLED", "LeaveCombat")
 	self:RegisterEvent("PLAYER_LEVEL_UP", "LevelUp")
 	self:RegisterEvent("PLAYER_DEAD", "GameOver")
-	-- self:RegisterEvent("INSTANCE_ENCOUNTER_ENGAGE_UNIT", "BuildTargetInfo")
-	self:RegisterEvent("PLAYER_TARGET_CHANGED", "ParseTargetInfo")
+	-- self:RegisterEvent("PLAYER_TARGET_CHANGED", "ParseTargetInfo")
 	self:RegisterEvent("PLAYER_LEAVING_WORLD", "LeaveCombat")
 end
 
@@ -943,6 +710,6 @@ function CE:OnDisable()
 	self:UnregisterEvent("PLAYER_REGEN_ENABLED")
 	self:UnregisterEvent("PLAYER_LEVEL_UP")
 	self:UnregisterEvent("PLAYER_DEAD")
-	self:UnregisterEvent("PLAYER_TARGET_CHANGED")
+	-- self:UnregisterEvent("PLAYER_TARGET_CHANGED")
 	self:UnregisterEvent("PLAYER_LEAVING_WORLD")
 end
