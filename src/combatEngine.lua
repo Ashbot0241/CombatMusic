@@ -81,31 +81,26 @@ function CE:EnterCombat(event, ...)
 		self:CancelAllTimers()
 	end
 
-	-- Restore volume to defaults if we're already in combat
-	if self.inCombat then E:SetVolumeLevel(true) end
 	if UnitIsDeadOrGhost('player') then return end -- Don't play music if we're dead...
 
 	self.inCombat = true
     if not self.isPlayingMusic then
-        self.isPlayingMusic = self:ParseTargetInfo()
+        -- Delay music start in case we get an ENCOUNTER_START trigger
+        self:ScheduleTimer(function()
+            if not CE.isPlayingMusic and CE.inCombat then
+                CE.isPlayingMusic = CE:ParseTargetInfo()
+            end
+            -- This is the very end of the checking cycle.
+	        -- Where music is finally played, so figure out how much time it took
+            E:PrintDebug(format("  ==§dTime taken: %fms", debugprofilestop() - CE._TargetCheckTime))
+            E:SendMessage("COMBATMUSIC_ENTER_COMBAT")
+        end, 1)
+        return
 
     -- User might not want the song to change if music is already playing...
     elseif E:GetSetting("General", "CombatEngine", "SkipSongChange") and self.isPlayingMusic then
         return
     end
-
-	-- Save the last volume state...
-	E:SaveLastVolumeState()
-
-	if self.isPlayingMusic then
-		-- Don't change the volume if we're not playing music
-		E:SetVolumeLevel()
-	end
-
-	-- This is the very end of the checking cylce.
-	-- Where music is finally played, so figure out how much time it took
-	E:PrintDebug(format("  ==§dTime taken: %fms",  debugprofilestop() - self._TargetCheckTime))
-	E:SendMessage("COMBATMUSIC_ENTER_COMBAT")
 end
 
 
@@ -194,8 +189,8 @@ function CE:ParseTargetInfo()
             -- Check the boss list
             if E:CheckBossList(self.encounterID, playerGuid, unit) then
                 -- Playing bosslist song
+                E:PrintDebug("  ==§cEncounter Level Set: DIFFICULTY_BOSS")
                 self.encounterLevel = DIFFICULTY_BOSSLIST
-                E:PrintDebug("  ==§cON BOSSLIST")
                 return true
             end
         end
@@ -204,16 +199,16 @@ function CE:ParseTargetInfo()
     -- if it's not on the boss list
     local musicType
 
-    if self.encounterID and UnitAffectingCombat("player") then
-        if self.encounterLevel < DIFFICULTY_BOSS then
-            musicType = "Bosses"
-            self.encounterLevel = DIFFICULTY_BOSS
-        end
-    elseif UnitAffectingCombat("player") then
-        if self.encounterLevel < DIFFICULTY_NORMAL then
-            musicType = "Battles"
-            self.encounterLevel = DIFFICULTY_NORMAL
-        end
+    if self.encounterID and self.encounterLevel < DIFFICULTY_BOSS then
+        E:PrintDebug("  ==§cEncounter Level Set: DIFFICULTY_BOSS")
+        musicType = "Bosses"
+        self.encounterLevel = DIFFICULTY_BOSS
+    elseif self.encounterLevel < DIFFICULTY_NORMAL then
+        E:PrintDebug("  ==§cEncounter Level Set: DIFFICULTY_NORMAL")
+        musicType = "Battles"
+        self.encounterLevel = DIFFICULTY_NORMAL
+    else
+        return false
     end
 
      -- Play the music
@@ -237,6 +232,7 @@ local function ResetCombatState()
 	CE.fadeTimer = nil
 	CE.isPlayingMusic = nil
     CE.musicType = nil
+    CE.soundHandle = nil
 	CE:CancelAllTimers()
 
 	-- Wipe tables
@@ -251,8 +247,6 @@ local function ResetCombatState()
 	if CE.RecheckTimer then
 		wipe(CE.RecheckTimer)
 	end
-
-	E:SetVolumeLevel(true)
 end
 
 
@@ -355,7 +349,7 @@ local function FadeStepCallback(logMode)
         CE.FadeVars.CurrentVolume = CE.FadeVars.CurrentVolume - CE.FadeVars.VolumeStep
     end
 
-	-- E:PrintDebug(format("  ==§bStepCount = %d, CurrentVolume = %f",  CE.FadeVars.StepCount, CE.FadeVars.CurrentVolume))
+	E:PrintDebug(format("  ==§bStepCount = %d, CurrentVolume = %f",  CE.FadeVars.StepCount, CE.FadeVars.CurrentVolume))
     -- And change our VolumeStep
     CE.FadeVars.VolumeStep = CE.FadeVars.VolumeStep - CE.FadeVars.VolumeStepDelta
 
@@ -405,7 +399,7 @@ end
 function CE:COMBATMUSIC_FADE_COMPLETED()
 	printFuncName("COMBATMUSIC_FADE_COMPLETED")
 	-- Unregister the message
-	-- self:UnregisterMessage("COMBATMUSIC_FADE_COMPLETED")
+	self:UnregisterMessage("COMBATMUSIC_FADE_COMPLETED")
 
 	-- If this was a boss fight:
 	local playWhen = E:GetSetting("General", "CombatEngine", "FanfareEnable")
@@ -417,11 +411,14 @@ function CE:COMBATMUSIC_FADE_COMPLETED()
 		self:PlayFanfare("Victory")
 	end
 
-	-- Stop the music
-	StopMusic()
+    -- Stop the music
+    StopMusic()
 
 	-- Reset the combat state finally
 	self.fadeTimer = self:ScheduleTimer(ResetCombatState, 1)
+
+    -- Reset the users music settings, if they were enabled
+    E:SetVolumeLevel(self.musicEnabled)
 end
 
 
@@ -442,12 +439,12 @@ function CE:PlayFanfare(fanfare)
 	printFuncName("PlayFanfare")
 
 	-- Is there already a fanfare playing?
-	if self.SoundId then
-		StopSound(self.SoundId)
+	if self.soundId then
+		StopSound(self.soundId)
 	end
 
 	-- Play our chosen fanfare
-	self.SoundId = select(2, E:PlaySoundFile("Interface\\Addons\\CombatMusic_Music\\" .. fanfare .. ".mp3"))
+	self.soundId = select(2, E:PlaySoundFile("Interface\\Addons\\CombatMusic_Music\\" .. fanfare .. ".mp3"))
 end
 
 
@@ -464,14 +461,14 @@ function CE:StartCombatChallenge()
 	-- Make sure the challenge isn't already running:
 	if isEnabled and not isRunning then
 		-- Mark the start time of the challenge, clear the finish time
-		self.ChallengeStartTime = debugprofilestop()
-		self.ChallengeModeRunning = true
-		self.ChallengeFinishTime = nil
+		self.challengeStartTime = debugprofilestop()
+		self.challengeModeRunning = true
+		self.challengeFinishTime = nil
 		E:UnregisterMessage("COMBATMUSIC_ENTER_COMBAT")
 
 		-- Set the user's Fadeout timer to 10 seconds:
-		self.OldFadeMode = E:GetSetting("General", "CombatEngine", "FadeMode")
-		self.OldFadeOut = E:GetSetting("General", "CombatEngine", "FadeTimer")
+		self.oldFadeMode = E:GetSetting("General", "CombatEngine", "FadeMode")
+		self.oldFadeOut = E:GetSetting("General", "CombatEngine", "FadeTimer")
 		CombatMusicDB.General.CombatEngine.FadeTimer = 10
 		CombatMusicDB.General.CombatEngine.FadeMode = "ALL"
 
@@ -496,16 +493,16 @@ function CE:EndCombatChallenge()
 	-- Can't end a challenge if it's not running
 	if isEnabled and isRunning then
 		-- Mark the finish time, this marks challenge modes as completed.
-		self.ChallengeFinishTime = debugprofilestop()
-		self.ChallengeModeRunning = false
-		CombatMusicDB.General.CombatEngine.FadeTimer = self.OldFadeOut or DF.General.CombatEngine.FadeTimer
-		CombatMusicDB.General.CombatEngine.FadeMode = self.OldFadeMode or DF.General.CombatEngine.FadeMode
+		self.challengeFinishTime = debugprofilestop()
+		self.challengeModeRunning = false
+		CombatMusicDB.General.CombatEngine.FadeTimer = self.oldFadeOut or DF.General.CombatEngine.FadeTimer
+		CombatMusicDB.General.CombatEngine.FadeMode = self.oldFadeMode or DF.General.CombatEngine.FadeMode
 
 		-- Disable the challenge mode option so it doesn't start again.
 		CombatMusicDB.General.InCombatChallenge = false
 
 		-- Flash a fancy popup here
-		E:Print(format(L["Chat_ChallengeModeCompleted"], (self.ChallengeFinishTime - startTime) / 1000))
+		E:Print(format(L["Chat_ChallengeModeCompleted"], (self.challengeFinishTime - startTime) / 1000))
 		E:UnregisterMessage("COMBATMUSIC_FADE_COMPLETED")
 		self:SendMessage("COMBATMUSIC_CHALLENGE_MODE_FINISHED")
 	end
@@ -516,9 +513,9 @@ end
 function CE:ResetCombatChallenge()
 	printFuncName("ResetCombatChallenge")
 
-	self.ChallengeModeRunning = nil
-	self.ChallengeStartTime = nil
-	self.ChallengeFinishTime = nil
+	self.challengeModeRunning = nil
+	self.challengeStartTime = nil
+	self.challengeFinishTime = nil
 
 	-- Let the user know that the challenge is ready to start again.
 	E:Print(L["Chat_ChallengeModeReset"])
@@ -532,7 +529,7 @@ function CE:GetChallengeModeState()
 	printFuncName("GetChallengeModeState")
 
 	-- Tell us what we need to know, the third argument is true when the Challenge Mode is NOT running, but has a start and finish time.
-	return E:GetSetting("General", "InCombatChallenge"), self.ChallengeModeRunning, (self.ChallengeFinishTime and self.ChallengeStartTime), self.ChallengeStartTime, self.ChallengeFinishTime
+	return E:GetSetting("General", "InCombatChallenge"), self.challengeModeRunning, (self.challengeFinishTime and self.challengeStartTime), self.challengeStartTime, self.challengeFinishTime
 end
 
 
@@ -697,7 +694,7 @@ function CE:OnEnable()
 	self:RegisterEvent("PLAYER_REGEN_ENABLED", "LeaveCombat")
 	self:RegisterEvent("PLAYER_LEVEL_UP", "LevelUp")
 	self:RegisterEvent("PLAYER_DEAD", "GameOver")
-	-- self:RegisterEvent("PLAYER_TARGET_CHANGED", "ParseTargetInfo")
+	self:RegisterEvent("PLAYER_TARGET_CHANGED", "ParseTargetInfo")
 	self:RegisterEvent("PLAYER_LEAVING_WORLD", "LeaveCombat")
 end
 
@@ -710,6 +707,6 @@ function CE:OnDisable()
 	self:UnregisterEvent("PLAYER_REGEN_ENABLED")
 	self:UnregisterEvent("PLAYER_LEVEL_UP")
 	self:UnregisterEvent("PLAYER_DEAD")
-	-- self:UnregisterEvent("PLAYER_TARGET_CHANGED")
+	self:UnregisterEvent("PLAYER_TARGET_CHANGED")
 	self:UnregisterEvent("PLAYER_LEAVING_WORLD")
 end

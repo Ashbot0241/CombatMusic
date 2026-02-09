@@ -277,7 +277,9 @@ function E:PlayMusicFile(musicType)
 		local rand = random(1, max)
 		self:PrintDebug("  ==§bSong: " .. fullPath .. "\\song" .. rand .. "." .. fileExt)
 
+        -- if we've gotten this far and we're already playing music, stop it.
         StopMusic()
+
 		return PlayMusic(fullPath .. "\\song" .. rand .. "." .. fileExt)
 	end
 end
@@ -336,19 +338,24 @@ function E:CheckBossList(encounterID, playerGuid, unit)
                 end
             end
         end
-    else return false end
+    else
+        E:PrintDebug("  ==§cNOT ON BOSSLIST")
+        return false
+    end
 
-    if not songName then return false end
+    if not songName then
+        E:PrintDebug("  ==§cNO SONGNAME")
+        return false
+    end
 
 	local fullPath = CheckSongName(songName)
 
 	-- If the song doesn't play, we may not be able to resolve the file path in 'fullPath'
 	if not fullPath then return false end
 
+    -- If we've gotten this far and are already playing something, stop it and play the new thing.
     StopMusic()
-    PlayMusic(fullPath)
-	self:PrintDebug("  ==§bSong: " .. fullPath)
-	return true
+    return PlayMusic(fullPath)
 end
 
 
@@ -360,27 +367,10 @@ function E:SetVolumeLevel(restore)
 	if not restore then
 		-- Set the in combat music levels
 		SetCVar("Sound_MusicVolume", self:GetSetting("General", "Volume"))
-		-- SetCVar("Sound_EnableMusic", "1")
-		if not WARNING_SHOWN and not GetCVarBool("Sound_EnableMusic") then
-			self:PrintError(L["MusicDisabled"])
-			WARNING_SHOWN = true
-		end
-		--[[ 5.3 HACK FIX!
-		if self:GetSetting("General", "Fix5.3Bug") then
-			-- Disabling SFX will allow music to play normally!
-			SetCVar("Sound_EnableSFX", "0")
-		end]]
 	else
 		-- Set the out of combat ones.
+        SetCVar("Sound_EnableMusic", 1)
 		SetCVar("Sound_MusicVolume", self.lastMusicVolume)
-
-		-- We don't -restore- EnableMusic, because it's always supposed to be on.
-
-		--[[5.3 HACK FIX!
-		if self:GetSetting("General", "Fix5.3Bug") then
-			SetCVar("Sound_EnableSFX", self.lastSoundEnabled)
-		end]]
-
 	end
 end
 
@@ -388,9 +378,4 @@ end
 function E:SaveLastVolumeState()
 	printFuncName("SaveLastVolumeState")
 	self.lastMusicVolume = GetCVar("Sound_MusicVolume")
-
-	--[[ 5.3 HACK FIX!
-	if self:GetSetting("General", "Fix5.3Bug") then
-		self.lastSoundEnabled = GetCVar("Sound_EnableSFX")
-	end]]
 end

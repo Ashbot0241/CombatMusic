@@ -264,18 +264,6 @@ E.Options.args = {
 		func = function() E:RestoreDefaults() end,
 		order = 120,
 	},
-	MusicFileFormat = {
-		name = L["MusicFileFormat"],
-		desc = L["Desc_MusicFileFormat"],
-		type = "select",
-		values = {
-			mp3 = "mp3",
-			ogg = "ogg",
-		},
-		get = function(info) return E:GetSetting("MusicFileFormat") end,
-		set = function(info, val) CombatMusicDB.MusicFileFormat = val end,
-		order = 130,
-	},
 
 	-- About Screen --
 	------------------
@@ -358,6 +346,18 @@ E.Options.args = {
 				desc = L["Desc_UseMaster"],
 				type = "toggle",
 			},
+            MusicFileFormat = {
+		        name = L["MusicFileFormat"],
+		        desc = L["Desc_MusicFileFormat"],
+		        type = "select",
+		        values = {
+			        mp3 = "mp3",
+			        ogg = "ogg",
+		        },
+                order = 200,
+                width = "half",
+                style = "radio",
+	        },
 			Volume = {
 				name = L["Volume"],
 				--desc = L["Desc_Volume"],
@@ -368,7 +368,7 @@ E.Options.args = {
 				step = 0.001,
 				bigStep = 0.01,
 				isPercent = true,
-				order = 200,
+				order = 400,
 			},
 			-- ["Fix5.3Bug"] = {
 			-- 	name = L["Fix5.3Bug"],
@@ -382,7 +382,7 @@ E.Options.args = {
 				--desc = L["Desc_NumSongs"],
 				type = "group",
 				inline = true,
-				order = 400,
+				order = 600,
 				args = {} -- This will be filled in by our :RegisterSongType
 			},
 			BossList = {

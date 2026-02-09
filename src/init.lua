@@ -48,6 +48,7 @@ AddOn.DF = {
 		--["Fix5.3Bug"] = true,
 		SongList = {},
 		InCombatChallenge = false,
+        MusicFileFormat = "mp3",
 	},
 	Modules = {
 		-- Only put this one here, because we don't give an
@@ -90,7 +91,6 @@ _G[AddOnName] = Engine
 -- Helps with printing function arguments and names in debug messages
 -- to make tracing code progress easier.
 function AddOn.printFuncName(func, ...)
-    AddOn._DebugMode = false
     if not AddOn._DebugMode then return end
 	local argList = {}
     for i = 1, select("#", ...) do
@@ -166,12 +166,12 @@ function AddOn:OnEnable()
 		end
 	end
 
-	-- This forces the user's Music volume to 0 if they have music off
-	-- so that they won't notice that it was turned on.
-	if not GetCVarBool("Sound_EnableMusic") then
-		SetCVar("Sound_MusicVolume", "0")
-	end
-	SetCVar("Sound_EnableMusic", "1")
+	-- Checks to see whether the user has Music enabled. We'll turn this off when we enter combat
+    -- so that WoW's regular music doesn't play over the top of combat music.
+    self.musicEnabled = GetCVarBool("Sound_EnableMusic")
+    if not self.musicEnabled then
+        self.lastMusicVolume = GetCVar("Sound_MusicVlume")
+    end
 
 	-- Disable any modules that are marked to not load
 	for name, module in self:IterateModules() do

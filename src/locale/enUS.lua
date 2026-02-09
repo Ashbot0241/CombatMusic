@@ -68,6 +68,7 @@ if L then
     L["LoginMessage"] = "Login Message"
     L["MiscFeatures"] = "Miscellaneous features"
     L["MusicDisabled"] = "Your in-game music has been turned off. §cWhile your music is off, CombatMusic won't work properly!§r Turn your music back on, or reload your UI to use CombatMusic again."
+    L["MusicFileFormat"] = "Music File Format"
     L["NumSongs"] = "Song Counts"
     L["PreferFocus"] = "Check 'focustarget' first"
     L["RemoveBossList"] = "Remove this unit from the BossList?"
