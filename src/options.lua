@@ -264,6 +264,18 @@ E.Options.args = {
 		func = function() E:RestoreDefaults() end,
 		order = 120,
 	},
+	MusicFileFormat = {
+		name = L["MusicFileFormat"],
+		desc = L["Desc_MusicFileFormat"],
+		type = "select",
+		values = {
+			mp3 = "mp3",
+			ogg = "ogg",
+		},
+		get = function(info) return E:GetSetting("MusicFileFormat") end,
+		set = function(info, val) CombatMusicDB.MusicFileFormat = val end,
+		order = 130,
+	},
 
 	-- About Screen --
 	------------------

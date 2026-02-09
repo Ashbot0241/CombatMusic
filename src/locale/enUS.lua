@@ -44,6 +44,7 @@ if L then
     L["Desc_FanfareEnable"] = "When should you hear a Victory Fanfare..."
     L["Desc_GameOverEnable"] = "When should you hear a GameOver..."
     L["Desc_GarrisonsAreOutdoors"] = "If checked, this will make CombatMusic treat your Garrison as if you were out in the world (Elite monsters will always be considered bosses). Otherwise, it will treat your Garrison like a dungeon (Elite monsters are only bosses if their modified level is 5 more than yours)."
+    L["Desc_MusicFileFormat"] = "Select the default file format for music files in your Music folder."
     L["Desc_PreferFocus"] = "Check your focus' target first in unit checking."
     L["Desc_RestoreDefaults"] = "Restore all settings to their defaults."
     L["Desc_SkipSongChange"] = "When enabled, will skip changing the song when upgrading the \"combat level\". Ignores BossList entries."

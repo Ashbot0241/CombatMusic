@@ -16,4 +16,7 @@ If you have music already in the folders and it’s all set up, then running the
 The addon will play random tracks from your 'Battles' folder when you enter combat. If entering combat against a 'Boss' creature it will instead play a random track from your 'Bosses' folder.
 
 ### Side Note
-You can only use .mp3 files for now, as WoW is a bit picky and wants the extension when I ask for the music files.
+When adding entries to the bosslist, omit the file extension from the song filename (i.e. 'song4' instead of 'song4.mp3'). The addon assumes that your bosslist songs are in the 'CombatMusic_Music\Bosses' folder, and that all songs are using the extension selected in General Options.
+
+### .ogg files
+CombatMusic should now be able play files with the .ogg extension. Select which format you prefer from the General Options page. Files can be manually converted from .mp3 to .ogg format using tools like Audacity (File > Export)

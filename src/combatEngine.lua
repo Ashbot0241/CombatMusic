@@ -159,7 +159,6 @@ end
 --- Iterates through the module's target information table and plays music appropriately
 function CE:ParseTargetInfo()
     printFuncName("ParseTargetInfo")
-    if self.encounterID then print("encounterID: " .. self.encounterID) end
     if not self.inCombat then return false end
     if not self.encounterLevel then self.encounterLevel = DIFFICULTY_NONE end
 
@@ -551,6 +550,7 @@ local defaults = {
 	FadeLog = true,
 	GarrisonsAreOutdoors = true,
 	SkipSongChange = false,
+	MusicFileFormat = "mp3",
 }
 
 

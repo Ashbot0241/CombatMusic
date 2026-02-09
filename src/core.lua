@@ -118,6 +118,18 @@ function E:CheckSettingsDB()
 end
 
 
+-- Check that the filename in the bosslist doesn't have a file extension. Return the appropriate path.
+local function CheckSongName(songName)
+    local checkSongName = string.sub(songName, -4)
+	if checkSongName == ".mp3" or checkSongName == ".ogg" then
+		return "Interface\\Addons\\CombatMusic_Music\\Bosses\\" .. songName
+	else
+		local fileExt = E:GetSetting("General", "MusicFileFormat") or "mp3"
+		return "Interface\\Addons\\CombatMusic_Music\\Bosses\\" .. songName .. "." .. fileExt
+	end
+end
+
+
 ------------
 --	Core code
 ------------
@@ -257,15 +269,16 @@ function E:PlayMusicFile(musicType)
 	if not self:GetSetting("General", "SongList", musicType, "Enabled") then return false end
 	-- How many songs are we using of this songType?
 	local max = self:GetSetting("General", "SongList", musicType, "Count")
+	local fileExt = self:GetSetting("General", "MusicFileFormat") or "mp3"
 
 	-- Some more sanity checking...!
 	if not max then return false end
 	if max > 0 then
 		local rand = random(1, max)
-		self:PrintDebug("  ==§bSong: " .. fullPath .. "\\song" .. rand .. ".ogg")
+		self:PrintDebug("  ==§bSong: " .. fullPath .. "\\song" .. rand .. "." .. fileExt)
 
         StopMusic()
-		return PlayMusic(fullPath .. "\\song" .. rand .. ".ogg")
+		return PlayMusic(fullPath .. "\\song" .. rand .. "." .. fileExt)
 	end
 end
 
@@ -327,7 +340,7 @@ function E:CheckBossList(encounterID, playerGuid, unit)
 
     if not songName then return false end
 
-	local fullPath = "Interface\\Addons\\CombatMusic_Music\\Bosses\\" .. songName
+	local fullPath = CheckSongName(songName)
 
 	-- If the song doesn't play, we may not be able to resolve the file path in 'fullPath'
 	if not fullPath then return false end

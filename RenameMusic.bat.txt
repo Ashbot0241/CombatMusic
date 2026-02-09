@@ -43,6 +43,15 @@ FOR /R %%X IN (*.mp3) DO (
 		ECHO Renamed %%X to song!COUNT!.mp3
 	)
 )
+FOR /R %%X IN (*.ogg) DO (
+	IF NOT "%%~dpX"=="!LASTPATH!" (SET /A COUNT=0) ELSE (SET /A COUNT=!COUNT!+1)
+	SET LASTPATH=%%~dpX
+	:: make sure we don't rename songs in the root folder
+	IF NOT "%%~dpX"=="%__CD__%" (
+		REN "%%X" song!COUNT!.ogg
+		ECHO Renamed %%X to song!COUNT!.ogg
+	)
+)
 endlocal
 
 :End
