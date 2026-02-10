@@ -547,7 +547,6 @@ local defaults = {
 	FadeLog = true,
 	GarrisonsAreOutdoors = true,
 	SkipSongChange = false,
-	MusicFileFormat = "mp3",
 }
 
 
