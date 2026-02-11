@@ -93,7 +93,7 @@ function CE:EnterCombat(event, ...)
             -- This is the very end of the checking cycle.
 	        -- Where music is finally played, so figure out how much time it took
             E:PrintDebug(format("  ==§dTime taken: %fms", debugprofilestop() - CE._TargetCheckTime))
-            E:SendMessage("COMBATMUSIC_ENTER_COMBAT")
+            -- E:SendMessage("COMBATMUSIC_ENTER_COMBAT")
         end, 1)
         return
 
@@ -172,6 +172,7 @@ function CE:ParseTargetInfo()
         end
 
         for i = 1, #targetList do
+			local encounterID = self.encounterID
             local unit = targetList[i]
             local playerGuid
 
@@ -186,13 +187,15 @@ function CE:ParseTargetInfo()
                 end
             end
 
-            -- Check the boss list
-            if E:CheckBossList(self.encounterID, playerGuid, unit) then
-                -- Playing bosslist song
-                E:PrintDebug("  ==§cEncounter Level Set: DIFFICULTY_BOSS")
-                self.encounterLevel = DIFFICULTY_BOSSLIST
-                return true
-            end
+			if encounterID or playerGuid then
+                -- Check the boss list
+                if E:CheckBossList(encounterID, playerGuid, unit) then
+                    -- Playing bosslist song
+                    E:PrintDebug("  ==§cEncounter Level Set: DIFFICULTY_BOSS")
+                    self.encounterLevel = DIFFICULTY_BOSSLIST
+                    return true
+                end
+			end
         end
     end
 
@@ -232,7 +235,6 @@ local function ResetCombatState()
 	CE.fadeTimer = nil
 	CE.isPlayingMusic = nil
     CE.musicType = nil
-    CE.soundHandle = nil
 	CE:CancelAllTimers()
 
 	-- Wipe tables

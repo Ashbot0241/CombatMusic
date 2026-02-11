@@ -277,10 +277,8 @@ function E:PlayMusicFile(musicType)
 		local rand = random(1, max)
 		self:PrintDebug("  ==§bSong: " .. fullPath .. "\\song" .. rand .. "." .. fileExt)
 
-        -- if we've gotten this far and we're already playing music, stop it.
-        StopMusic()
-
-		return PlayMusic(fullPath .. "\\song" .. rand .. "." .. fileExt)
+		local willPlay = PlayMusic(fullPath .. "\\song" .. rand .. "." .. fileExt)
+		return willPlay
 	end
 end
 
@@ -353,9 +351,8 @@ function E:CheckBossList(encounterID, playerGuid, unit)
 	-- If the song doesn't play, we may not be able to resolve the file path in 'fullPath'
 	if not fullPath then return false end
 
-    -- If we've gotten this far and are already playing something, stop it and play the new thing.
-    StopMusic()
-    return PlayMusic(fullPath)
+    local willPlay = PlayMusic(fullPath)
+    return willPlay
 end
 
 

@@ -30,7 +30,7 @@ if L then
     L["Count"] = true
     L["DebugModeDisabled"] = "§7Debug Mode§r has been turned §7off§r."
     L["DebugModeWarning"] = "§7Debug Mode§r has been enabled. Please keep in mind that this is for testing purposes only. The addon will be print a LOT of messages to chat, spamming out most of anything else. To turn it back off, just run §6/cm debug§r again."
-    L["Desc_About"] = "G's CombatMusic, or just CombatMusic is an addon that you can use to bring that RPG feel back to your World of Warcraft experience! It helps you by automatically playing music you choose when you get into fights ingame!"
+    L["Desc_About"] = "§2G's CombatMusic Revived§r, or just CombatMusic is an addon that you can use to bring that RPG feel back to your World of Warcraft experience! It helps you by automatically playing music you choose when you get into fights ingame!"
     L["Desc_AddBossList"] = "Add this to the boss list."
     L["Desc_BossListName"] = "The name of the NPC to add to the bosslist, Use \"%TARGET\" if you want to add your current target. Only works out of combat and not in an instance"
     L["Desc_BossListSong"] = "The name of the song you want to play. A valid example might be song1.mp3 or ­DMF_L70ETC01.mp3. Default filepath Interface\\Addons\\CombatMusic_Music"
@@ -48,12 +48,17 @@ if L then
     L["Desc_PreferFocus"] = "Check your focus' target first in unit checking."
     L["Desc_RestoreDefaults"] = "Restore all settings to their defaults."
     L["Desc_SkipSongChange"] = "When enabled, will skip changing the song when upgrading the \"combat level\". Ignores BossList entries."
+    L["Desc_InterfaceOptionsTitle"] = "CombatMusic Options"
+    L["Desc_InterfaceOptionsText"] = [=[Combat Music Verion:         @project-version@
+                                                     Revision:       @project-abbreviated-hash@                                              
+                                                     Author:         @project-author@
+                                                     GitHub Project: @project-repository@]=]
     L["Desc_UseDing"] = "Use 'DING.mp3' instead of 'Victory.mp3' when you level up."
     L["Desc_UseMaster"] = "Use the master audio channel to play fanfares."
     L["Desc_UseOGG"] = "Select to use .ogg files instead of .mp3 files."
     L["Desc_Version"] = "The current version of this AddOn you're running. You'll need this if you want to report a bug."
     L["Enabled"] = true
-    L["Err_NeedsToBeMP3"] = "Your song path needs to end in .mp3"
+    L["Err_NeedsToBeMP3"] = "Your song path should exclude the file extension, or needs to end in .mp3 or .ogg"
     L["Err_NoBossListNameTarget"] = "You need to specify a unit name to check for, or you didn't have a target."
     L["Err_NoBossListSong"] = "You need to put in a song to play."
     L["FadeLog"] = "Logarithmic Fadeout"
@@ -70,6 +75,7 @@ if L then
     L["MusicDisabled"] = "Your in-game music has been turned off. §cWhile your music is off, CombatMusic won't work properly!§r Turn your music back on, or reload your UI to use CombatMusic again."
     L["MusicFileFormat"] = "Music File Format"
     L["NumSongs"] = "Song Counts"
+    L["OpenOptions"] = "Open Options Panel"
     L["PreferFocus"] = "Check 'focustarget' first"
     L["RemoveBossList"] = "Remove this unit from the BossList?"
     L["RestoreDefaults"] = "Restore Defaults"

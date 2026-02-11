@@ -27,8 +27,8 @@ local GetAddOnMetadata = C_AddOns and C_AddOns.GetAddOnMetadata or GetAddOnMetad
 AC:RegisterOptionsTable(AddOnName, E.Options)
 ACD:SetDefaultSize(AddOnName, DEFAULT_WIDTH, DEFAULT_HEIGHT)
 
---local f = ACD:AddToBlizOptions(AddOnName)
---f.default = function() E:RestoreDefaults() end
+local f = ACD:AddToBlizOptions(AddOnName)
+f.default = function() E:RestoreDefaults() end
 
 local strCredits=[[I want to give a special thank you to everyone who's helped out with CombatMusic's development, or donated money to the project. If I've missed your name, send me a PM on Curse, and I will add you!
 
