@@ -170,7 +170,7 @@ function AddOn:OnEnable()
     -- so that WoW's regular music doesn't play over the top of combat music.
     self.musicEnabled = GetCVarBool("Sound_EnableMusic")
     if not self.musicEnabled then
-        self.lastMusicVolume = GetCVar("Sound_MusicVlume")
+        self.lastMusicVolume = GetCVar("Sound_MusicVolume")
     end
 
 	-- Disable any modules that are marked to not load

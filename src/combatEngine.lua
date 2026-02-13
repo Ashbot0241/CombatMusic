@@ -46,7 +46,7 @@ function CE:EncounterStarted(event, ...)
 	if not E:GetSetting("Enabled") then return end
 
     local encounterID = ...
-    if not issecretvalue(encounterID) then
+    if issecretvalue and not issecretvalue(encounterID) then
 	    self.encounterID = tostring(...)
     else
         self.encounterID = nil
@@ -87,12 +87,14 @@ function CE:EnterCombat(event, ...)
     if not self.isPlayingMusic then
         -- Delay music start in case we get an ENCOUNTER_START trigger
         self:ScheduleTimer(function()
-            if not CE.isPlayingMusic and CE.inCombat then
-                CE.isPlayingMusic = CE:ParseTargetInfo()
+            if not self.isPlayingMusic and self.inCombat then
+				E:SaveLastVolumeState()
+				E:SetVolumeLevel(false)
+                self.isPlayingMusic = self:ParseTargetInfo()
             end
             -- This is the very end of the checking cycle.
 	        -- Where music is finally played, so figure out how much time it took
-            E:PrintDebug(format("  ==§dTime taken: %fms", debugprofilestop() - CE._TargetCheckTime))
+            E:PrintDebug(format("  ==§dTime taken: %fms", debugprofilestop() - self._TargetCheckTime))
             -- E:SendMessage("COMBATMUSIC_ENTER_COMBAT")
         end, 1)
         return
@@ -176,7 +178,7 @@ function CE:ParseTargetInfo()
             local unit = targetList[i]
             local playerGuid
 
-            if issecretvalue(UnitName(unit)) or issecretvalue(UnitGUID(unit)) then
+            if issecretvalue and (issecretvalue(UnitName(unit)) or issecretvalue(UnitGUID(unit))) then
                 unit = ""
                 playerGuid = nil
             elseif UnitExists(unit) and UnitIsPlayer(unit) then
@@ -229,7 +231,6 @@ local function ResetCombatState()
 	if not CE.inCombat then return end
 	printFuncName("ResetCombatState")
 	-- Clear variables:
-    CE.encounterID = nil
 	CE.inCombat = nil
 	CE.encounterLevel = nil
 	CE.fadeTimer = nil
@@ -257,6 +258,8 @@ local MAX_FADE_STEPS = 50
 --@arg forceStop Pass as true to force the music to stop instead of fade out.
 function CE:LeaveCombat(event, forceStop)
 	printFuncName("LeaveCombat", event, forceStop)
+
+	if event == "PLAYER_REGEN_ENABLED" and self.encounterID then return end
 
 	-- Need to be in combat to leave it!
 	if not self.inCombat then return end
@@ -419,8 +422,8 @@ function CE:COMBATMUSIC_FADE_COMPLETED()
 	-- Reset the combat state finally
 	self.fadeTimer = self:ScheduleTimer(ResetCombatState, 1)
 
-    -- Reset the users music settings, if they were enabled
-    E:SetVolumeLevel(self.musicEnabled)
+    -- Reset the users music settings
+    E:SetVolumeLevel(true)
 end
 
 

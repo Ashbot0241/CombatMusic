@@ -122,10 +122,10 @@ end
 local function CheckSongName(songName)
     local checkSongName = string.sub(songName, -4)
 	if checkSongName == ".mp3" or checkSongName == ".ogg" then
-		return "Interface\\Addons\\CombatMusic_Music\\Bosses\\" .. songName
+		return "Interface\\AddOns\\CombatMusic_Music\\Bosses\\" .. songName
 	else
 		local fileExt = E:GetSetting("General", "MusicFileFormat") or "mp3"
-		return "Interface\\Addons\\CombatMusic_Music\\Bosses\\" .. songName .. "." .. fileExt
+		return "Interface\\AddOns\\CombatMusic_Music\\Bosses\\" .. songName .. "." .. fileExt
 	end
 end
 
@@ -253,7 +253,7 @@ end
 
 
 --- Plays a random music file from the folder 'songPath'
---@arg songPath The folder path rooted at "Interface\\Addons\CombatMusic_Music\\" of the songs to pick from
+--@arg songPath The folder path rooted at "Interface\\AddOns\\CombatMusic_Music\\" of the songs to pick from
 --@return 1 if music played successfully, otherwise nil
 --@usage MyModule.Success = E:PlayMusicFile("musicType")
 function E:PlayMusicFile(musicType)
@@ -261,7 +261,7 @@ function E:PlayMusicFile(musicType)
 
 	if not musicType then return end
 	-- Quickly plot out the paths we use
-	local fullPath = "Interface\\Addons\\CombatMusic_Music\\" .. musicType
+	local fullPath = "Interface\\AddOns\\CombatMusic_Music\\" .. musicType
 
 	-- songPath needs to exist...
 	if not self:GetSetting("General","SongList", musicType) then return false end
@@ -366,7 +366,7 @@ function E:SetVolumeLevel(restore)
 		SetCVar("Sound_MusicVolume", self:GetSetting("General", "Volume"))
 	else
 		-- Set the out of combat ones.
-        SetCVar("Sound_EnableMusic", 1)
+        SetCVar("Sound_EnableMusic", self.lastMusicEnabled)
 		SetCVar("Sound_MusicVolume", self.lastMusicVolume)
 	end
 end
@@ -374,5 +374,6 @@ end
 --- Saves the user's current volume settings.
 function E:SaveLastVolumeState()
 	printFuncName("SaveLastVolumeState")
+	self.lastMusicEnabled = GetCVarBool("Sound_EnableMusic")
 	self.lastMusicVolume = GetCVar("Sound_MusicVolume")
 end
