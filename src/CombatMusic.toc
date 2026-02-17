@@ -1,4 +1,4 @@
-## Interface: 120000, 120001
+## Interface: 120001
 ## Title: G's |cFFAF96FFCombatMusic|r - Revived
 ## Notes: Plays custom music in combat.
 ## Author: @project-author@

@@ -117,12 +117,20 @@ function AddOn:OnInitialize()
 	SLASH_COMBATMUSIC2 = "/cm"
 
 	-- Initialize the Boss list
-	if type(CombatMusicBossList) ~= "table" then
+	if not CombatMusicBossList or type(CombatMusicBossList) ~= "table" then
 		CombatMusicBossList = {}
 	end
 
-    if type(CombatMusicBossList["Players"]) ~= "table" then
-        CombatMusicBossList["Players"] = {}
+    if not CombatMusicBossList.Units or type(CombatMusicBossList.Units) ~= "table" then
+        CombatMusicBossList.Units = {}
+    end
+
+    -- Migrate to 'Units' if we had players
+    if CombatMusicBossList.Players then
+        for k, v in pairs(CombatMusicBossList.Players) do
+            CombatMusicBossList.Units[k] = v
+        end
+        CombatMusicBossList.Players = nil
     end
 
 	-- Build the bosslist buttons:
@@ -165,13 +173,6 @@ function AddOn:OnEnable()
 			self:Print(format(Locale["Chat_BirthdayMessage"]))
 		end
 	end
-
-	-- Checks to see whether the user has Music enabled. We'll turn this off when we enter combat
-    -- so that WoW's regular music doesn't play over the top of combat music.
-    self.musicEnabled = GetCVarBool("Sound_EnableMusic")
-    if not self.musicEnabled then
-        self.lastMusicVolume = GetCVar("Sound_MusicVolume")
-    end
 
 	-- Disable any modules that are marked to not load
 	for name, module in self:IterateModules() do

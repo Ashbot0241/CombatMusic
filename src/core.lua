@@ -99,7 +99,7 @@ function E:CheckSettingsDB()
 	printFuncName("CheckSettingsDB")
 
 	-- Make sure they have a bosslist
-	if type(CombatMusicBossList) ~= "table" then
+	if not CombatMusicBossList or type(CombatMusicBossList) ~= "table" then
 		CombatMusicBossList = {}
 	end
 
@@ -115,18 +115,6 @@ function E:CheckSettingsDB()
 		return false
 	end
 	return true
-end
-
-
--- Check that the filename in the bosslist doesn't have a file extension. Return the appropriate path.
-local function CheckSongName(songName)
-    local checkSongName = string.sub(songName, -4)
-	if checkSongName == ".mp3" or checkSongName == ".ogg" then
-		return "Interface\\AddOns\\CombatMusic_Music\\Bosses\\" .. songName
-	else
-		local fileExt = E:GetSetting("General", "MusicFileFormat") or "mp3"
-		return "Interface\\AddOns\\CombatMusic_Music\\Bosses\\" .. songName .. "." .. fileExt
-	end
 end
 
 
@@ -253,7 +241,7 @@ end
 
 
 --- Plays a random music file from the folder 'songPath'
---@arg songPath The folder path rooted at "Interface\\AddOns\\CombatMusic_Music\\" of the songs to pick from
+--@arg songPath The folder path rooted at "Interface/AddOns/CombatMusic_Music/" of the songs to pick from
 --@return 1 if music played successfully, otherwise nil
 --@usage MyModule.Success = E:PlayMusicFile("musicType")
 function E:PlayMusicFile(musicType)
@@ -261,9 +249,8 @@ function E:PlayMusicFile(musicType)
 
 	if not musicType then return end
 	-- Quickly plot out the paths we use
-	local fullPath = "Interface\\AddOns\\CombatMusic_Music\\" .. musicType
+	local basePath = "Interface/AddOns/CombatMusic_Music/" .. musicType .. "/"
 
-	-- songPath needs to exist...
 	if not self:GetSetting("General","SongList", musicType) then return false end
 	-- Are we using this song type?
 	if not self:GetSetting("General", "SongList", musicType, "Enabled") then return false end
@@ -275,10 +262,11 @@ function E:PlayMusicFile(musicType)
 	if not max then return false end
 	if max > 0 then
 		local rand = random(1, max)
-		self:PrintDebug("  ==§bSong: " .. fullPath .. "\\song" .. rand .. "." .. fileExt)
+        local fullPath = basePath .. "song" .. rand .. "." .. fileExt
+        self:PrintDebug("  ==§bSong: " .. basePath .. "song" .. rand .. "." .. fileExt)
 
-		local willPlay = PlayMusic(fullPath .. "\\song" .. rand .. "." .. fileExt)
-		return willPlay
+        -- Finally, lets play some random music
+		PlayMusic(fullPath)
 	end
 end
 
@@ -299,60 +287,66 @@ end
 --- Check to see if 'unit''s name is on the custom song list
 --@arg unit the unit token to check
 --@return True if the unit is on the custom song list, otherwise false.
-function E:CheckBossList(encounterID, playerGuid, unit)
-	printFuncName("CheckBossList", encounterID, playerGuid, unit)
-	if not encounterID and not playerGuid then return false end
+function E:CheckBossList(encounterID, unit)
+	printFuncName("CheckBossList", encounterID, unit)
+	if not encounterID and not unit then return false end
 
-    local songName
+    local bossPath = "Interface/AddOns/Interface/CombatMusic_Music/Bosses/"
 	-- Checking that the 'Players' sub-table exists.
-	if not CombatMusicBossList["Players"] then CombatMusicBossList["Players"] = {} end
+	if not CombatMusicBossList.Units then CombatMusicBossList.Units = {} end
 
     -- If the unit is on the bosslist, play that specific song.
-    if encounterID and CombatMusicBossList[encounterID] then
-		songName = CombatMusicBossList[encounterID].songName
-    elseif playerGuid then
-        local playerName
-        if unit and UnitIsPlayer(unit) then
-            local secretName = UnitName(unit)
-            if not issecretvalue or not issecretvalue(secretName) then
-                playerName = secretName
-            end
-        end
-
-        if playerName and CombatMusicBossList["Players"][playerName] then
-            -- Found the player, get their song
-            songName = CombatMusicBossList["Players"][playerName].songName
-
-            -- If we don't know their GUID, add it now.
-            if not CombatMusicBossList["Players"][playerName].playerGuid then
-                CombatMusicBossList["Players"][playerName].playerGuid = playerGuid
-            end
-        else
-            -- Otherwise, check to see whether we can match the player by their GUID
-            for name, info in pairs(CombatMusicBossList["Players"]) do
-                if info.playerGuid == playerGuid then
-                    songName = info.songName
-                    break
-                end
+    if encounterID then
+        if CombatMusicBossList[encounterID] then
+            local songName = CombatMusicBossList[encounterID].songName
+            if songName then
+                E:PrintDebug("  ==§cPlaying Bosslist song (encounter): " .. bossPath .. songName)
+                PlayMusic(bossPath .. songName)
+                return true
+            else
+                E:PrintDebug("  ==§cNo song name found (encounter)")
             end
         end
     else
-        E:PrintDebug("  ==§cNOT ON BOSSLIST")
-        return false
+        E:PrintDebug("  ==§cEncounter not on Bosslist.")
     end
 
-    if not songName then
-        E:PrintDebug("  ==§cNO SONGNAME")
-        return false
+    if unit then
+        local unitGuid, unitName
+        if issecretvalue and not issecretvalue(UnitGUID(unit)) then
+            unitGuid = UnitGUID(unit)
+            unitName = UnitName(unit)
+            if unitName and CombatMusicBossList.Units[unitName] then
+                -- Found the unit, get its song
+                local songName = CombatMusicBossList.Units[unitName].songName
+                if songName then
+                    E:PrintDebug("  ==§cPlaying Bosslist song (unit): " .. bossPath .. songName)
+                    PlayMusic(bossPath .. songName)
+                    return true
+                else
+                    E:PrintDebug("  ==§cNo song name found (unit)")
+                end
+                -- Otherwise, check to see whether unit is a player and we can find their Guid
+            elseif unitName and UnitIsPlayer(unit) then
+                for name, info in pairs(CombatMusicBossList.Units) do
+                    if info.unitGuid == unitGuid then
+                        local songName = CombatMusicBossList.Units[unitName].songName
+                        if songName then
+                            E:PrintDebug("  ==§cPlaying Bosslist song (unitName): " .. bossPath .. songName)
+                            PlayMusic(bossPath .. songName)
+                            return true
+                        else
+                            E:PrintDebug("  ==§cNo song name found (unitName)")
+                        end
+                        break
+                    end
+                end
+            end
+        else
+            E:PrintDebug("  ==§cUnit not on Bosslist.")
+            return false
+        end
     end
-
-	local fullPath = CheckSongName(songName)
-
-	-- If the song doesn't play, we may not be able to resolve the file path in 'fullPath'
-	if not fullPath then return false end
-
-    local willPlay = PlayMusic(fullPath)
-    return willPlay
 end
 
 
@@ -363,6 +357,7 @@ function E:SetVolumeLevel(restore)
 	printFuncName("SetVolumeLevel", restore)
 	if not restore then
 		-- Set the in combat music levels
+        SetCVar("Sound_MusicVolume", 1)
 		SetCVar("Sound_MusicVolume", self:GetSetting("General", "Volume"))
 	else
 		-- Set the out of combat ones.

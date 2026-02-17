@@ -65,7 +65,6 @@ end
 -- Needed another way to identify a boss in combat / instance
 -- Search for the boss name in the Encounter Journal and all encounters with that boss name
 -- to the boss list.
--- Won't work for PvP targets so have to add that in.
 function E:AddBossName(name, song, guid)
     EJ_SetSearch(name)
 
@@ -75,26 +74,26 @@ function E:AddBossName(name, song, guid)
 			self:Cancel()
 
 			local numResults = EJ_GetNumSearchResults()
-			if not CombatMusicBossList["Players"] then
-                CombatMusicBossList["Players"] = {}
+			if not CombatMusicBossList.Units then
+                CombatMusicBossList.Units = {}
             end
 
-            local newPlayer = {}
+            local newUnit = {}
 
 			-- Maybe a player? Store those differently
 			if numResults == 0 then
 				local player, realm = strsplit("-", name, 2)
 
 				if player then
-                    newPlayer = {
-					    playerName = name,
+                    newUnit = {
+					    unitName = name,
                         realmName = realm or "",
-                        playerGuid = guid or nil,
+                        unitGuid = guid or nil,
 					    songName = song
 				    }
 				end
 
-				CombatMusicBossList["Players"][name] = newPlayer
+				CombatMusicBossList.Units[name] = newUnit
 			else
 
 			    -- Get the Encounter Info for the entered boss name
@@ -157,7 +156,6 @@ function E:AddNewBossListEntry()
 	end
 
 	-- Add that song.
-	-- CombatMusicBossList[blName] = blSong
 	self:AddBossName(blName, blSong, guid)
 
 	blName = ""
@@ -171,24 +169,24 @@ function E:GetBosslistButtons()
 
 	for k, v in pairs(CombatMusicBossList) do
 
-        if k == "Players" then
+        if k == "Units" then
             if type(v) == "table" then
-                for playerName, playerData in pairs(v) do
+                for unitName, unitData in pairs(v) do
                     count = count + 1
 
-                    local displayName = playerName
-                    if playerData.realmName and playerData.realmName ~= "" then
-                        displayName = displayName .. "-" .. playerData.realmName
+                    local displayName = unitName
+                    if unitData.realmName and unitData.realmName ~= "" then
+                        displayName = displayName .. "-" .. unitData.realmName
                     end
 
                     t["ListItem" .. count] = {
 						type = "execute",
 						name = displayName,
-						desc = playerData.songName or "",
+						desc = unitData.songName or "",
 						confirm = true,
 						confirmText = L["RemoveBossList"],
 						func = function()
-							CombatMusicBossList["Players"][playerName] = nil
+							CombatMusicBossList.Units[unitName] = nil
 							self.Options.args.General.args.BossList.args.ListGroup.args = self:GetBosslistButtons()
 							ACR:NotifyChange(AddOnName)
 						end,
@@ -196,12 +194,16 @@ function E:GetBosslistButtons()
                 end
             end
         else
-            local key = k
             local displayName = k
             local songName = ""
 
-            displayName = v.bossName or v.encounterName
-            songName = v.songName or ""
+            if type(v) == 'table' then
+                displayName = v.bossName or v.encounterName
+                songName = v.songName or ""
+            else
+                displayName = tostring(v)
+                songName = ""
+            end
 
             count = count + 1
             t["ListItem" .. count] = {
