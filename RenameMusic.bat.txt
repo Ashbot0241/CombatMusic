@@ -29,10 +29,10 @@ IF ["%__CD__:~-18%"]==["CombatMusic_Music\"] (
 		MKDIR Bosses
 		SET NODIR=1
 	)
-	IF NOT EXIST BossList\ {
+	IF NOT EXIST BossList\ (
 		MKDIR BossList
 		SET NODIR=1
-	}
+    )
 	IF NOT DEFINED NODIR (GOTO LOOP) ELSE (GOTO END)
 )
 
