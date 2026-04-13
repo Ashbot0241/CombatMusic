@@ -43,26 +43,33 @@ local DIFFICULTY_BOSSLIST = 10
 function CE:EncounterStarted(event, ...)
 	--- Grabs the active encounter ID
 	printFuncName("EncounterStarted", event, ...)
+	if not E:GetSetting("Enabled") then return end
 
     local encounterID = ...
     if encounterID then
         self.encounterID = tostring(encounterID)
     end
-
-    self:ParseInfo()
 end
 
 
 function CE:EncounterEnded(event, ...)
 	--- Clears the encounter ID when the encounter ends
 	printFuncName("EncounterEnded", event, ...)
+    if not E:GetSetting("Enabled") then return end
 
-	self.encounterID = nil
-    self.encounterName = nil
-    if self.encounterLevel ~= DIFFICULTY_BOSSLIST then
-        self.encounterLevel = DIFFICULTY_NONE
-    end
-    self:ParseInfo()
+	C_Timer.NewTicker(0.1, function(self)
+		if not CE.isParsing then
+			self:Cancel()
+            if CE.inCombat and CE.isPlayingMusic then
+                CE.encounterID = nil
+                CE.encounterName = nil
+				CE.nowPlaying = ""
+				CE.encounterLevel = DIFFICULTY_NONE
+				CE.songName = ""
+			    CE:ParseInfo()
+			end
+		end
+	end)
 end
 
 
@@ -74,43 +81,38 @@ function CE:EnterCombat(event, ...)
 	-- for debugging, mark the time we started target checking
 	self._TargetCheckTime = debugprofilestop()
 
-    if not self.savedVolume then
-        self.savedVolume = true
-        E:SaveLastVolumeState()
-    end
-
 	-- Check Fading
 	if self.fadeTimer then
         self:CancelTimer(self.fadeTimer)
 		self.fadeTimer = nil
-        if self.savedVolume then E:SetVolumeLevel(false) end
+        if self.savedVolume then
+			E:SetVolumeLevel(false)
+			self.savedVolume = true
+        end
     end
     if self.resetTimer then
         self:CancelTimer(self.resetTimer)
         self.resetTimer = nil
     end
 
-	if UnitIsDeadOrGhost('player') then return end -- Don't play music if we're dead...
+    -- Don't play music if we're dead...
+	if UnitIsDeadOrGhost('player') then return end
 
+    -- Ensure that essential variables have values
+	if not self.encounterLevel then self.encounterLevel = DIFFICULTY_NONE end
 	self.inCombat = true
-    if not self.isPlayingMusic then
-        -- Delay music start in case we get an ENCOUNTER_START trigger
-        self:ScheduleTimer(function()
-            if not self.isPlayingMusic and self.inCombat then
-				E:SetVolumeLevel(false)
-                self:ParseInfo()
-            end
-            -- This is the very end of the checking cycle.
-	        -- Where music is finally played, so figure out how much time it took
-            E:PrintDebug(format("  ==§dTime taken: %fms", debugprofilestop() - self._TargetCheckTime))
-            E:SendMessage("COMBATMUSIC_ENTER_COMBAT")
-        end, 1)
-        return
 
-    -- User might not want the song to change if music is already playing...
-    elseif E:GetSetting("General", "CombatEngine", "SkipSongChange") and self.isPlayingMusic then
-        return
-    end
+	-- Skip changing songs if we're already playing music and the user has SkipSongChange enabled
+	if self.isPlayingMusic and E:GetSetting("General", "CombatEngine", "SkipSongChange") then return end
+
+    -- Delay music start in case we get an ENCOUNTER_START trigger
+    self:ScheduleTimer(function()
+		self:ParseInfo()
+		-- This is the very end of the checking cycle.
+	    -- Where music is finally played, so figure out how much time it took
+        E:PrintDebug(format("  ==§dTime taken: %fms", debugprofilestop() - self._TargetCheckTime))
+        E:SendMessage("COMBATMUSIC_ENTER_COMBAT")
+	end, 1)
 end
 
 
@@ -160,45 +162,76 @@ function CE:Recheck(k)
 end
 
 
+local function CheckVisibleUnits()
+    printFuncName("CheckVisibleUnits")
+
+	-- Check the units stored in CE.visibleUnits against the bossList, skipping any that we've already checked.
+	for unitGuid, info in pairs(CE.visibleUnits) do
+		if not info.unitChecked then
+			info.unitChecked = true
+			local songName = E:CheckBossList(CE.encounterID, info.unit)
+            if songName then
+                CE.encounterLevel = DIFFICULTY_BOSSLIST
+                CE.songName = songName
+				E:PrintDebug(format("  ==§dBossList song changed:", songName))
+                CE:ParseInfo()
+				break
+			end
+        end
+    end
+end
+
+
 --- Iterates through the module's target information table and plays music appropriately
-function CE:ParseInfo(unit)
+function CE:ParseInfo()
     printFuncName("ParseInfo")
+
+	-- If we're not in combat we don't want to parse anything so just return
     if not self.inCombat then return end
-    if not self.encounterLevel then self.encounterLevel = DIFFICULTY_NONE end
+	self.isParsing = true
 
-    -- Don't change music if we're fading out...
-    if self.fadeTimer then return end
+	if self.inCombat then
+		-- Check that we have stored the music settings, which should be done in EnterCombat, but just in case
+		if not self.savedVolume and not self.isPlayingMusic then
+			E:SetVolumeLevel(false)
+			self.savedVolume = true
+		end
 
-    if self.encounterLevel == DIFFICULTY_BOSSLIST and self.isPlayingMusic then return end
-    if self.encounterLevel == DIFFICULTY_BOSS and self.isPlayingMusic then return end
-
-    if self.encounterID then
-        if self.inCombat and self.encounterLevel < DIFFICULTY_BOSS then
+		-- Check our encounter level and play music from the appropriate song list
+		if self.encounterLevel == DIFFICULTY_BOSSLIST and not self.nowPlaying then
+			E:PrintDebug(" ==§cEncounter Level Set: DIFFICULTY_BOSSLIST")
+			E:PlayMusicFile("BossList", self.songName)
+			self.isPlayingMusic = true
+			self.bossList = true
+        elseif self.encounterID and self.encounterLevel < DIFFICULTY_BOSS then
             E:PrintDebug("  ==§cEncounter Level Set: DIFFICULTY_BOSS")
             self.encounterLevel = DIFFICULTY_BOSS
             E:PlayMusicFile("Bosses")
             self.isPlayingMusic = true
-        end
-    elseif self.inCombat and self.encounterLevel < DIFFICULTY_NORMAL then
-        E:PrintDebug("  ==§cEncounter Level Set: DIFFICULTY_NORMAL")
-        self.encounterLevel = DIFFICULTY_NORMAL
-        E:PlayMusicFile("Battles")
-        self.isPlayingMusic = true
+        elseif not self.encounterID and self.encounterLevel < DIFFICULTY_NORMAL then
+            E:PrintDebug("  ==§cEncounter Level Set: DIFFICULTY_NORMAL")
+            self.encounterLevel = DIFFICULTY_NORMAL
+            E:PlayMusicFile("Battles")
+            self.isPlayingMusic = true
+		end
     end
+
+    -- Schedule a timer to check in 5 seconds to catch newly added units
+	if not self.checkTimer then
+		self.checkTimer = self:ScheduleRepeatingTimer(CheckVisibleUnits, 5)
+    end
+
+	self.isParsing = false
 end
 
 
 local function ResetCombatState()
 	printFuncName("ResetCombatState")
-	-- Clear variables:
-	CE.inCombat = nil
-	CE.encounterLevel = nil
-	CE.fadeTimer = nil
-	CE.isPlayingMusic = nil
-    CE.musicType = nil
-    E.currentMusicPath = ""
 
-    if CE.RecheckTimer then
+	-- Cancel timers
+	if CE.checkTimer then CE:CancelTimer(CE.checkTimer) end
+	if CE.fadeTimer then CE:CancelTimer(CE.fadeTimer) end
+	if CE.RecheckTimer then
         for k, t in pairs(CE.RecheckTimer) do
             if t then
                 CE:CancelTimer(t)
@@ -208,9 +241,19 @@ local function ResetCombatState()
 		wipe(CE.RecheckTimer)
 	end
 
-	if CE.FadeVars then
-		wipe(CE.FadeVars)
+	if CE.fadeVars then
+		wipe(CE.fadeVars)
 	end
+
+	-- Clear variables:
+	CE.checkTimer = nil
+	CE.encounterLevel = nil
+	CE.fadeTimer = nil
+	CE.inCombat = nil
+	CE.isPlayingMusic = nil
+	CE.musicType = nil
+	CE.nowPlaying = ""
+    E.currentMusicPath = ""
 end
 
 
@@ -281,47 +324,47 @@ end
 local function FadeStepCallback(logMode)
 	-- printFuncName("FadeStep")
 	if not CE.fadeTimer then return end
-	if not CE.FadeVars.StepCount then
-        CE.FadeVars.StepCount = 0
-		CE.FadeVars.CurrentVolume = E:GetSetting("General", "Volume")
+	if not CE.fadeVars.StepCount then
+        CE.fadeVars.StepCount = 0
+		CE.fadeVars.CurrentVolume = E:GetSetting("General", "Volume")
         if logMode then
             -- Logarithmic Fading...
-            CE.FadeVars.VolumeStep = exp(CE.FadeVars.CurrentVolume)
-            CE.FadeVars.VolumeStepDelta = (CE.FadeVars.VolumeStep - 1) / (MAX_FADE_STEPS - 1)
+            CE.fadeVars.VolumeStep = exp(CE.fadeVars.CurrentVolume)
+            CE.fadeVars.VolumeStepDelta = (CE.fadeVars.VolumeStep - 1) / (MAX_FADE_STEPS - 1)
         else
             -- Linear fading
-            CE.FadeVars.VolumeStep = CE.FadeVars.CurrentVolume / MAX_FADE_STEPS
-            CE.FadeVars.VolumeStepDelta = 0
+            CE.fadeVars.VolumeStep = CE.fadeVars.CurrentVolume / MAX_FADE_STEPS
+            CE.fadeVars.VolumeStepDelta = 0
         end
 	end
 
 	-- Increment the step counter
-	CE.FadeVars.StepCount = CE.FadeVars.StepCount + 1
+	CE.fadeVars.StepCount = CE.fadeVars.StepCount + 1
 
 	-- Update the current volume
     if logMode then
-        CE.FadeVars.CurrentVolume = log(CE.FadeVars.VolumeStep)
+        CE.fadeVars.CurrentVolume = log(CE.fadeVars.VolumeStep)
     else
-        CE.FadeVars.CurrentVolume = CE.FadeVars.CurrentVolume - CE.FadeVars.VolumeStep
+        CE.fadeVars.CurrentVolume = CE.fadeVars.CurrentVolume - CE.fadeVars.VolumeStep
     end
 
-	E:PrintDebug(format("  ==§bStepCount = %d, CurrentVolume = %f",  CE.FadeVars.StepCount, CE.FadeVars.CurrentVolume))
+	E:PrintDebug(format("  ==§bStepCount = %d, CurrentVolume = %f",  CE.fadeVars.StepCount, CE.fadeVars.CurrentVolume))
     -- And change our VolumeStep
-    CE.FadeVars.VolumeStep = CE.FadeVars.VolumeStep - CE.FadeVars.VolumeStepDelta
+    CE.fadeVars.VolumeStep = CE.fadeVars.VolumeStep - CE.fadeVars.VolumeStepDelta
 
     -- Volume can't fall below 0, and we don't want to go farther than MAX_FADE_STEPS
-    if CE.FadeVars.CurrentVolume <= 0 or CE.FadeVars.StepCount >= MAX_FADE_STEPS then
-        CE.FadeVars.CurrentVolume = 0
+    if CE.fadeVars.CurrentVolume <= 0 or CE.fadeVars.StepCount >= MAX_FADE_STEPS then
+        CE.fadeVars.CurrentVolume = 0
         -- Set the volume, stop the music, and wait for it to finish fading off before sending the
         -- fading complete message.
-        SetCVar("Sound_MusicVolume", CE.FadeVars.CurrentVolume)
+        SetCVar("Sound_MusicVolume", CE.fadeVars.CurrentVolume)
         CE:CancelTimer(CE.fadeTimer)
         CE:SendMessage("COMBATMUSIC_FADE_COMPLETED")
         return
     end
 
     -- And set our volume
-    SetCVar("Sound_MusicVolume", CE.FadeVars.CurrentVolume)
+    SetCVar("Sound_MusicVolume", CE.fadeVars.CurrentVolume)
 end
 
 
@@ -334,8 +377,8 @@ function CE:BeginMusicFade()
 
 	-- Get our fade timeout.
 	self.fadeTime = E:GetSetting("General", "CombatEngine", "FadeTimer")
-	-- Set FadeVars
-	self.FadeVars = {}
+	-- Set fadeVars
+	self.fadeVars = {}
 
 	-- The user's disabled fading...
 	-- or music isn't playing
@@ -345,30 +388,34 @@ function CE:BeginMusicFade()
 	end
 
 	-- Get the interval
-	self.FadeVars.interval = self.fadeTime / MAX_FADE_STEPS
+	self.fadeVars.interval = self.fadeTime / MAX_FADE_STEPS
 	-- Schedule the timer
-	self.fadeTimer = self:ScheduleRepeatingTimer(FadeStepCallback, self.FadeVars.interval, E:GetSetting("General", "CombatEngine", "FadeLog"))
+	self.fadeTimer = self:ScheduleRepeatingTimer(FadeStepCallback, self.fadeVars.interval, E:GetSetting("General", "CombatEngine", "FadeLog"))
 end
 
 
 function CE:OnUnitVisibilityChanged(event, unit)
-    -- printFuncName("OnUnitVisibilityChanged")
+    printFuncName("OnUnitVisibilityChanged", event, unit)
     if not self.inCombat then return end
     if not UnitAffectingCombat(unit) or not UnitCanAttack(unit, "player") then return end
 
-    if not self.encounterLevel then self.encounterLevel = DIFFICULTY_NONE end
-    if self.encounterLevel == DIFFICULTY_BOSSLIST then return end
+	-- Don't check the boss list for secret units
+	if issecretvalue and (issecretvalue(UnitGUID(unit)) or issecretvalue(UnitName(unit))) then return end
 
-    if E:GetSetting("General","CombatEngine", "CheckBoss") and self.encounterLevel < DIFFICULTY_BOSSLIST then
-		if self.encounterID or unit then
-            if E:CheckBossList(self.encounterID, unit) then
-                -- Playing bosslist song
-                E:PrintDebug("  ==§cEncounter Level Set: DIFFICULTY_BOSSLIST")
-                self.encounterLevel = DIFFICULTY_BOSSLIST
-                self.isPlayingMusic = true
-            end
-        end
-    end
+	if event == "NAME_PLATE_UNIT_ADDED" then
+		self.visibleUnits[UnitGUID(unit)] = {
+			unit = UnitName(unit),
+			unitGuid = UnitGUID(unit),
+			unitChecked = false,
+		}
+	elseif event == "NAME_PLATE_UNIT_REMOVED" and self.visibleUnits[UnitGUID(unit)] then
+		self.visibleUnits[UnitGUID(unit)] = nil
+	end
+
+	-- Schedule a timer to check the visible units 
+	if not self.checkVisible then
+        self.checkVisible = self:ScheduleRepeatingTimer(CheckVisibleUnits(), 5)
+	end
 end
 
 
@@ -395,8 +442,7 @@ function CE:COMBATMUSIC_FADE_COMPLETED()
     self.savedVolume = false
 
 	-- Reset the combat state finally
-    if self.resetTimer then self:CancelTimer(self.resetTimer) end
-	self.resetTimer = self:ScheduleTimer(ResetCombatState, 1)
+    ResetCombatState()
 end
 
 
@@ -686,6 +732,7 @@ function CE:OnDisable()
 	self:UnregisterEvent("PLAYER_REGEN_ENABLED")
 	self:UnregisterEvent("PLAYER_LEVEL_UP")
 	self:UnregisterEvent("PLAYER_DEAD")
+    self:UnregisterEvent("NAME_PLATE_UNIT_ADDED")
 	self:UnregisterEvent("PLAYER_TARGET_CHANGED")
 	self:UnregisterEvent("PLAYER_LEAVING_WORLD")
 end

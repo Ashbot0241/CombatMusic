@@ -9,7 +9,7 @@ For new installs, create a folder named "CombatMusic_Music" in your addons folde
 
 Next, copy or move the file "RenameMusic.bat.txt" to the "CombatMusic_Music" folder and rename it to just “RenameMusic.bat” (remove '.txt'). This will generate a Windows warning prompt stating “If you change a file’s extension, it may no longer be usable.” That's ok with us, so just click OK.
 
-With that done, you’ll need songs for it to rename. If you don’t have any folders or songs, or don’t know what I’m talking about here, just run the file once, and it will create the 'Battle' and 'Bosses' subfolders if they don't exist yet.
+With that done, you’ll need songs for it to rename. If you don’t have any folders or songs, or don’t know what I’m talking about here, just run the file once, and it will create the 'Battles', 'Bosses'  and 'BossList' subfolders if they don't exist yet.
 
 If you have music already in the folders and it’s all set up, then running the batch file will go through each of the subfolders, renaming the songs that you put in there to be recognized by CombatMusic’s random song picker (using the song#.mp3 naming convention). You can also leave song names as whatever you want for the boss list, but note that any songs not using the convention of 'song#.mp3' won't be a part of the random playlist.
 

@@ -244,29 +244,47 @@ end
 --@arg songPath The folder path rooted at "Interface/AddOns/CombatMusic_Music/" of the songs to pick from
 --@return 1 if music played successfully, otherwise nil
 --@usage MyModule.Success = E:PlayMusicFile("musicType")
-function E:PlayMusicFile(musicType)
+function E:PlayMusicFile(musicType, songName)
 	printFuncName("PlayMusicFile", musicType)
 
 	if not musicType then return end
+
 	-- Quickly plot out the paths we use
 	local basePath = "Interface/AddOns/CombatMusic_Music/" .. musicType .. "/"
-
-	if not self:GetSetting("General","SongList", musicType) then return false end
-	-- Are we using this song type?
-	if not self:GetSetting("General", "SongList", musicType, "Enabled") then return false end
-	-- How many songs are we using of this songType?
-	local max = self:GetSetting("General", "SongList", musicType, "Count")
 	local fileExt = self:GetSetting("General", "MusicFileFormat") or "mp3"
+	local fullPath = ""
+	local nowPlaying = ""
 
-	-- Some more sanity checking...!
-	if not max then return false end
-	if max > 0 then
-		local rand = random(1, max)
-        local fullPath = basePath .. "song" .. rand .. "." .. fileExt
-        self:PrintDebug("  ==§bSong: " .. basePath .. "song" .. rand .. "." .. fileExt)
+	-- If songName exists, play that specific song from the bossList folder
+	if songName then
+		nowPlaying = songName .. "." .. fileExt
+	else
+		-- Otherwise, try to play a random song from the available tracks in the respective folder.
+		if not self:GetSetting("General","SongList", musicType) then return false end
 
+	    -- Are we using this song type?
+	    if not self:GetSetting("General", "SongList", musicType, "Enabled") then return false end
+
+	    -- How many songs are we using of this songType?
+	    local max = self:GetSetting("General", "SongList", musicType, "Count") or 0
+
+	    if max > 1 then
+		    local trackNo = random(max)
+			nowPlaying = "song" .. trackNo .. "." .. fileExt
+            fullPath = basePath .. nowPlaying
+            self:PrintDebug("  ==§bSong: " .. fullPath)
+		end
+	end
+
+	if nowPlaying ~= "" then
         -- Finally, lets play some random music
+		fullPath = basePath .. nowPlaying
 		PlayMusic(fullPath)
+
+		self:PrintDebug("  ==§bSong: " .. fullPath .. "." .. fileExt)
+	    return nowPlaying
+	else
+		return false
 	end
 end
 
@@ -291,7 +309,6 @@ function E:CheckBossList(encounterID, unit)
 	printFuncName("CheckBossList", encounterID, unit)
 	if not encounterID and not unit then return false end
 
-    local bossPath = "Interface/AddOns/Interface/CombatMusic_Music/Bosses/"
 	-- Checking that the 'Players' sub-table exists.
 	if not CombatMusicBossList.Units then CombatMusicBossList.Units = {} end
 
@@ -300,10 +317,9 @@ function E:CheckBossList(encounterID, unit)
         if CombatMusicBossList[encounterID] then
             local songName = CombatMusicBossList[encounterID].songName
             if songName then
-                E:PrintDebug("  ==§cPlaying Bosslist song (encounter): " .. bossPath .. songName)
-                PlayMusic(bossPath .. songName)
-                return true
-            else
+                E:PrintDebug("  ==§cPlaying Bosslist song (encounter): " .. songName)
+				return songName
+			else
                 E:PrintDebug("  ==§cNo song name found (encounter)")
             end
         end
@@ -312,33 +328,30 @@ function E:CheckBossList(encounterID, unit)
     end
 
     if unit then
-        local unitGuid, unitName
+        local songName, unitGuid, unitName
         if issecretvalue and not issecretvalue(UnitGUID(unit)) then
             unitGuid = UnitGUID(unit)
             unitName = UnitName(unit)
             if unitName and CombatMusicBossList.Units[unitName] then
                 -- Found the unit, get its song
-                local songName = CombatMusicBossList.Units[unitName].songName
+                songName = CombatMusicBossList.Units[unitName].songName
                 if songName then
-                    E:PrintDebug("  ==§cPlaying Bosslist song (unit): " .. bossPath .. songName)
-                    PlayMusic(bossPath .. songName)
-                    return true
+                    E:PrintDebug("  ==§cPlaying Bosslist song (unit): " .. songName)
+                    return songName
                 else
                     E:PrintDebug("  ==§cNo song name found (unit)")
                 end
-                -- Otherwise, check to see whether unit is a player and we can find their Guid
+            -- Otherwise, check to see whether unit is a player and we can find their Guid
             elseif unitName and UnitIsPlayer(unit) then
                 for name, info in pairs(CombatMusicBossList.Units) do
                     if info.unitGuid == unitGuid then
-                        local songName = CombatMusicBossList.Units[unitName].songName
+                        songName = CombatMusicBossList.Units[unitName].songName
                         if songName then
-                            E:PrintDebug("  ==§cPlaying Bosslist song (unitName): " .. bossPath .. songName)
-                            PlayMusic(bossPath .. songName)
-                            return true
+                            E:PrintDebug("  ==§cPlaying Bosslist song (unit): " .. songName)
+                            return songName
                         else
                             E:PrintDebug("  ==§cNo song name found (unitName)")
                         end
-                        break
                     end
                 end
             end
@@ -353,22 +366,19 @@ end
 local WARNING_SHOWN
 --- Sets or restores the volume levels provided in the settings
 --@arg restore Set to true to restore the out of combat levels instead.
-function E:SetVolumeLevel(restore)
-	printFuncName("SetVolumeLevel", restore)
-	if not restore then
+function E:SetVolumeLevel(restoreVolume)
+	printFuncName("SetVolumeLevel", restoreVolume)
+	if restoreVolume then
+		-- Set the out of combat music levels
+        SetCVar("Sound_EnableMusic", self.lastMusicEnabled)
+		SetCVar("Sound_MusicVolume", self.lastMusicVolume)
+	else
+		-- Store the out of combat music levels so that we can restore them later
+		self.lastMusicEnabled = GetCVarBool("Sound_EnableMusic")
+		self.lastMusicVolume = GetCVar("Sound_MusicVolume")
+
 		-- Set the in combat music levels
         SetCVar("Sound_MusicVolume", 1)
 		SetCVar("Sound_MusicVolume", self:GetSetting("General", "Volume"))
-	else
-		-- Set the out of combat ones.
-        SetCVar("Sound_EnableMusic", self.lastMusicEnabled)
-		SetCVar("Sound_MusicVolume", self.lastMusicVolume)
 	end
-end
-
---- Saves the user's current volume settings.
-function E:SaveLastVolumeState()
-	printFuncName("SaveLastVolumeState")
-	self.lastMusicEnabled = GetCVarBool("Sound_EnableMusic")
-	self.lastMusicVolume = GetCVar("Sound_MusicVolume")
 end
