@@ -165,15 +165,16 @@ end
 local function CheckVisibleUnits()
     printFuncName("CheckVisibleUnits")
 
-    if not CE.visibleUnits then CE.visibleUnits = {} end
+    if not self.visibleUnits then return end
+    
 	-- Check the units stored in CE.visibleUnits against the bossList, skipping any that we've already checked.
-	for unitGuid, info in pairs(CE.visibleUnits) do
+	for unitGuid, info in pairs(self.visibleUnits) do
 		if not info.unitChecked then
 			info.unitChecked = true
 			local songName = E:CheckBossList(CE.encounterID, info.unit)
             if songName then
-                CE.encounterLevel = DIFFICULTY_BOSSLIST
-                CE.songName = songName
+                self.encounterLevel = DIFFICULTY_BOSSLIST
+                self.songName = songName
 				E:PrintDebug(format("  ==§dBossList song changed:", songName))
                 CE:ParseInfo()
 				break
