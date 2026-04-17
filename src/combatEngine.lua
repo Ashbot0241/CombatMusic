@@ -150,6 +150,28 @@ function CE:GetInstanceInfo()
 end
 
 
+local function CheckVisibleUnits()
+    printFuncName("CheckVisibleUnits")
+
+    if not CE.visibleUnits then return end
+
+	-- Check the units stored in CE.visibleUnits against the bossList, skipping any that we've already checked.
+	for unitGuid, info in pairs(CE.visibleUnits) do
+		if not info.unitChecked then
+			info.unitChecked = true
+			local songName = E:CheckBossList(CE.encounterID, info.unit)
+            if songName then
+                CE.encounterLevel = DIFFICULTY_BOSSLIST
+                CE.songName = songName
+				E:PrintDebug(format("  ==§dBossList song changed:", songName))
+                CE:ParseInfo()
+				break
+			end
+        end
+    end
+end
+
+
 -- Schedule a recheck
 function CE:Recheck(k)
 	self._TargetCheckTime = debugprofilestop()
@@ -371,28 +393,6 @@ function CE:BeginMusicFade()
 	self.fadeVars.interval = self.fadeTime / MAX_FADE_STEPS
 	-- Schedule the timer
 	self.fadeTimer = self:ScheduleRepeatingTimer(FadeStepCallback, self.fadeVars.interval, E:GetSetting("General", "CombatEngine", "FadeLog"))
-end
-
-
-local function CheckVisibleUnits()
-    printFuncName("CheckVisibleUnits")
-
-    if not CE.visibleUnits then return end
-
-	-- Check the units stored in CE.visibleUnits against the bossList, skipping any that we've already checked.
-	for unitGuid, info in pairs(CE.visibleUnits) do
-		if not info.unitChecked then
-			info.unitChecked = true
-			local songName = E:CheckBossList(CE.encounterID, info.unit)
-            if songName then
-                CE.encounterLevel = DIFFICULTY_BOSSLIST
-                CE.songName = songName
-				E:PrintDebug(format("  ==§dBossList song changed:", songName))
-                CE:ParseInfo()
-				break
-			end
-        end
-    end
 end
 
 
