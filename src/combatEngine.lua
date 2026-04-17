@@ -165,6 +165,7 @@ end
 local function CheckVisibleUnits()
     printFuncName("CheckVisibleUnits")
 
+    if not CE.visibleUnits then CE.visibleUnits = {} end
 	-- Check the units stored in CE.visibleUnits against the bossList, skipping any that we've already checked.
 	for unitGuid, info in pairs(CE.visibleUnits) do
 		if not info.unitChecked then
