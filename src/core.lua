@@ -272,7 +272,7 @@ function E:PlayMusicFile(musicType, songName)
 		    local trackNo = random(max)
 			nowPlaying = "song" .. trackNo .. "." .. fileExt
             fullPath = basePath .. nowPlaying
-            self:PrintDebug("  ==§bSong: " .. fullPath)
+            self:PrintDebug("  ==§bSong: " .. nowPlaying)
 		end
 	end
 
@@ -281,7 +281,7 @@ function E:PlayMusicFile(musicType, songName)
 		fullPath = basePath .. nowPlaying
 		PlayMusic(fullPath)
 
-		self:PrintDebug("  ==§bSong: " .. fullPath .. "." .. fileExt)
+		self:PrintDebug("  ==§bPlaying Song from path: " .. fullPath)
 	    return nowPlaying
 	else
 		return false

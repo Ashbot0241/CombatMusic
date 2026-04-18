@@ -20,7 +20,7 @@ local E, L, DF = unpack(select(2, ...))
 local CE = E:NewModule("CombatEngine", "AceEvent-3.0", "AceTimer-3.0")
 
 -- Locals for faster lookups
-local pairs, select, random = pairs, select, random
+local pairs, next, select, random = pairs, next, select, random
 local tostring, tostringall, wipe, format = tostring, tostringall, wipe, format
 local exp, log = math.exp, math.log
 
@@ -56,19 +56,54 @@ function CE:EncounterEnded(event, ...)
 	printFuncName("EncounterEnded", event, ...)
     if not E:GetSetting("Enabled") then return end
 
-	C_Timer.NewTicker(0.1, function(self)
+	C_Timer.NewTicker(0.5, function(self)
 		if not CE.isParsing then
 			self:Cancel()
             if CE.inCombat and CE.isPlayingMusic then
                 CE.encounterID = nil
                 CE.encounterName = nil
 				CE.nowPlaying = ""
-				CE.encounterLevel = DIFFICULTY_NONE
 				CE.songName = ""
 			    CE:ParseInfo()
 			end
 		end
 	end)
+end
+
+
+local function CheckVisibleUnits()
+    printFuncName("CheckVisibleUnits")
+
+    -- Skip this round of checks if the table is empty or if we're still checking an earlier round
+    if next(CE.visibleUnits) == nil or CE.isCheckingUnit then return end
+
+    -- Check the units stored in CE.visibleUnits against the bossList, skipping any that we've already checked.
+	for unit, info in pairs(CE.visibleUnits) do
+
+        -- Slow down checking through visibleUnits
+        C_Timer.NewTicker(0.1, function(self)
+	        if not CE.isCheckingUnit then
+			    self:Cancel()
+                CE.isCheckingUnit = true
+                E:PrintDebug(format(" ==§dChecking Unit: " .. unit .. "."))
+                if CE.encounterLevel < DIFFICULTY_BOSSLIST then
+	                if not info.unitChecked then
+			            info.unitChecked = true
+			            local songName = E:CheckBossList(CE.encounterID, info.unit)
+                        if songName then
+                            -- What?! They're on the bossList? Play that song
+                            CE.encounterLevel = DIFFICULTY_BOSSLIST
+                            CE.songName = songName
+                            E:PrintDebug(format("  ==§dBossList song changed:", songName))
+                            CE:ParseInfo()
+                        end
+                    end
+                end
+	            CE.isCheckingUnit = false
+            end
+            E:PrintDebug(format(" ==§dUnit: " .. unit .. " has been checked."))
+        end)
+    end
 end
 
 
@@ -112,6 +147,11 @@ function CE:EnterCombat(event, ...)
         E:PrintDebug(format("  ==§dTime taken: %fms", debugprofilestop() - self._TargetCheckTime))
         E:SendMessage("COMBATMUSIC_ENTER_COMBAT")
 	end, 1)
+
+    -- Schedule a timer to check in 5 seconds to catch newly added units
+	if not self.checkTimer then
+		self.checkTimer = self:ScheduleRepeatingTimer(CheckVisibleUnits, 5)
+    end
 end
 
 
@@ -146,30 +186,6 @@ function CE:GetInstanceInfo()
 			return INSTANCE_OUTDOORS
 		end
 	end
-end
-
-
-local function CheckVisibleUnits()
-    printFuncName("CheckVisibleUnits")
-
-    if CE.visibleUnits then
-        -- Check the units stored in CE.visibleUnits against the bossList, skipping any that we've already checked.
-	    for unitGuid, info in pairs(CE.visibleUnits) do
-		    if not info.unitChecked then
-			    info.unitChecked = true
-			    local songName = E:CheckBossList(CE.encounterID, info.unit)
-                if songName then
-                    CE.encounterLevel = DIFFICULTY_BOSSLIST
-                    CE.songName = songName
-	                E:PrintDebug(format("  ==§dBossList song changed:", songName))
-                    CE:ParseInfo()
-				    break
-                end
-            end
-        end
-    else
-        CE.visibleUnits = {}
-    end
 end
 
 
@@ -217,11 +233,6 @@ function CE:ParseInfo()
             E:PlayMusicFile("Battles")
             self.isPlayingMusic = true
 		end
-    end
-
-    -- Schedule a timer to check in 5 seconds to catch newly added units
-	if not self.checkTimer then
-		self.checkTimer = self:ScheduleRepeatingTimer(CheckVisibleUnits, 5)
     end
 
 	self.isParsing = false

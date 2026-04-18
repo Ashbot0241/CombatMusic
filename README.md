@@ -18,5 +18,7 @@ The addon will play random tracks from your 'Battles' folder when you enter comb
 ### Side Note
 When adding entries to the bosslist, omit the file extension from the song filename (i.e. 'song4' instead of 'song4.mp3'). The addon assumes that your bosslist songs are in the 'CombatMusic_Music\Bosses' folder, and that all songs are using the extension selected in General Options.
 
+If you want to store your music files elsewhere you can do so by creating a symlink junction inside the Interface\Addons directory, using the same naming convention noted above. Blizz prevent addons from looking outside the installation directory so the addon still needs to 'think' it's sourcing the files from the normal location. This should also help to prevent accidental deletion of your music folder as it will only delete the junction, and not your precious music. Visit https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/mklink for more info on to create those and how they work.
+
 ### .ogg files
 CombatMusic should now be able play files with the .ogg extension. Select which format you prefer from the General Options page. Files can be manually converted from .mp3 to .ogg format using tools like Audacity (File > Export)
