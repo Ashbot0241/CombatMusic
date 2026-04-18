@@ -29,7 +29,6 @@ local debugprofilestop = debugprofilestop
 local GetInstanceInfo, UnitAffectingCombat, UnitIsDeadOrGhost, UnitIsPlayer = GetInstanceInfo, UnitAffectingCombat, UnitIsDeadOrGhost, UnitIsPlayer
 local StopMusic, StopSound = StopMusic, StopSound
 
-
 -- Debugging
 local printFuncName = E.printFuncName
 
@@ -153,21 +152,23 @@ end
 local function CheckVisibleUnits()
     printFuncName("CheckVisibleUnits")
 
-    if not CE.visibleUnits then return end
-
-	-- Check the units stored in CE.visibleUnits against the bossList, skipping any that we've already checked.
-	for unitGuid, info in pairs(CE.visibleUnits) do
-		if not info.unitChecked then
-			info.unitChecked = true
-			local songName = E:CheckBossList(CE.encounterID, info.unit)
-            if songName then
-                CE.encounterLevel = DIFFICULTY_BOSSLIST
-                CE.songName = songName
-				E:PrintDebug(format("  ==§dBossList song changed:", songName))
-                CE:ParseInfo()
-				break
-			end
+    if CE.visibleUnits then
+        -- Check the units stored in CE.visibleUnits against the bossList, skipping any that we've already checked.
+	    for unitGuid, info in pairs(CE.visibleUnits) do
+		    if not info.unitChecked then
+			    info.unitChecked = true
+			    local songName = E:CheckBossList(CE.encounterID, info.unit)
+                if songName then
+                    CE.encounterLevel = DIFFICULTY_BOSSLIST
+                    CE.songName = songName
+	                E:PrintDebug(format("  ==§dBossList song changed:", songName))
+                    CE:ParseInfo()
+				    break
+                end
+            end
         end
+    else
+        CE.visibleUnits = {}
     end
 end
 
@@ -398,25 +399,26 @@ end
 
 function CE:OnUnitVisibilityChanged(event, unit)
     printFuncName("OnUnitVisibilityChanged", event, unit)
-    if not self.inCombat then return end
-    if not UnitAffectingCombat(unit) or not UnitCanAttack(unit, "player") then return end
+
+    -- Ignore units that can't be hostile to the player
+    if not UnitCanAttack(unit, "player") then return end
 
 	-- Don't check the boss list for secret units
 	if issecretvalue and (issecretvalue(UnitGUID(unit)) or issecretvalue(UnitName(unit))) then return end
 
 	if event == "NAME_PLATE_UNIT_ADDED" then
-		self.visibleUnits[UnitGUID(unit)] = {
-			unit = UnitName(unit),
+		self.visibleUnits[unit] = {
+			unitName = UnitName(unit),
 			unitGuid = UnitGUID(unit),
 			unitChecked = false,
 		}
-	elseif event == "NAME_PLATE_UNIT_REMOVED" and self.visibleUnits[UnitGUID(unit)] then
-		self.visibleUnits[UnitGUID(unit)] = nil
+	elseif event == "NAME_PLATE_UNIT_REMOVED" and self.visibleUnits[unit] then
+		self.visibleUnits[unit] = nil
 	end
 
 	-- Schedule a timer to check the visible units 
 	if not self.checkVisible then
-        self.checkVisible = self:ScheduleRepeatingTimer(CheckVisibleUnits(), 5)
+        self.checkVisible = self:ScheduleRepeatingTimer(CheckVisibleUnits, 5)
 	end
 end
 
@@ -711,6 +713,8 @@ function CE:OnInitialize()
 	DF.Modules.CombatEngine = true
 	-- Last, but not least, add it's config to the options.
 	E.Options.args.General.args.CombatEngine = opt
+
+    CE.visibleUnits = {}
 end
 
 function CE:OnEnable()
